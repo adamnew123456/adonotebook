@@ -113,7 +113,12 @@ namespace ADONotebook
             {
                 while (true)
                 {
-                    var query = ReadQuery().Trim();
+                    var query = ReadQuery()?.Trim();
+                    if (query == null)
+                    {
+                        continue;
+                    }
+
                     if (query == ".quit;")
                     {
                         break;
