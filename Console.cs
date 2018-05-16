@@ -74,11 +74,6 @@ namespace ADONotebook
     {
         public QueryExecutor Executor {get; set;}
 
-        public ConsoleInput(QueryExecutor exec)
-        {
-            Executor = exec;
-        }
-
         /// <summary>
         ///   Reads a complete SQL query from the console. If a syntax error
         ///   is found, this returns null, otherwise the query is returned.

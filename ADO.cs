@@ -11,13 +11,7 @@ namespace ADONotebook
         public QueryOutput Output { get; set; }
 
         protected IDbConnection Connection;
-        private readonly int PageSize;
-
-        protected ADOQueryExecutor(QueryOutput output)
-        {
-            Output = output;
-            PageSize = 100;
-        }
+        private readonly int PageSize = 100;
 
         abstract public void Open();
 
@@ -123,7 +117,7 @@ namespace ADONotebook
         private string ProviderInvariant;
         private string ConnectionString;
 
-        public ADOProviderFactoryExecutor(string provider, string connectionString, QueryOutput output) : base(output)
+        public ADOProviderFactoryExecutor(string provider, string connectionString)
         {
             ProviderInvariant = provider;
             ConnectionString = connectionString;
@@ -150,7 +144,7 @@ namespace ADONotebook
         private string FactoryClass;
         private string ConnectionString;
 
-        public ADOReflectionExecutor(string assembly, string factoryClass, string connectionString, QueryOutput output) : base(output)
+        public ADOReflectionExecutor(string assembly, string factoryClass, string connectionString)
         {
             AssemblyFile = assembly;
             FactoryClass = factoryClass;
