@@ -25,29 +25,31 @@ namespace ADONotebook
             var maxColumnLengths = new int[columns.Length];
             for (var i = 0; i < columns.Length; i++)
             {
-                maxColumnLength[i] = Math.Max(table.Columns[i].ColumnName.Length, table.Columns[i].DataType.ToString().Length + 2);
+                maxColumnLengths[i] = Math.Max(columns[i].ColumnName.Length, columns[i].DataType.ToString().Length + 2);
             }
 
-            for (var i = 0; i < table.Columns.Count; i++)
+            for (var i = 0; i < columns.Length; i++)
             {
-                Console.Write(table.Columns[i].ColumnName.PadRight(maxColumnLength[i]));
+                Console.Write(columns[i].ColumnName.PadRight(maxColumnLengths[i]));
                 Console.Write(" ");
             }
             Console.WriteLine();
 
-            for (var i = 0; i < table.Columns.Count; i++)
+            for (var i = 0; i < columns.Length; i++)
             {
-                Console.Write("[{0}]", table.Columns[i].DataType.ToString().PadRight(maxColumnLength[i] - 2));
+                Console.Write("[{0}]", columns[i].DataType.ToString().PadRight(maxColumnLengths[i] - 2));
                 Console.Write(" ");
             }
             Console.WriteLine();
 
-            for (var i = 0; i < table.Columns.Count; i++)
+            for (var i = 0; i < columns.Length; i++)
             {
-                Console.Write(new string('=', maxColumnLength[i]));
+                Console.Write(new string('=', maxColumnLengths[i]));
                 Console.Write(" ");
             }
             Console.WriteLine();
+
+            return maxColumnLengths;
         }
 
         /// <summary>

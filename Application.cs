@@ -37,8 +37,7 @@ namespace ADONotebook
                                 PrintUsageAndDie();
                             }
 
-                            config.Input = null;
-                            config.Output = null;
+                            config.Input = new JsonRpcInput();
                             break;
 
                         case "-c":
@@ -78,14 +77,16 @@ namespace ADONotebook
                 return null;
             }
 
-            if (config.Input == null ||
-                config.Output == null ||
-                config.Executor == null)
+            if (config.Input == null || config.Executor == null)
             {
                 return null;
             }
 
-            config.Executor.Output = config.Output;
+            if (config.Output != null)
+            {
+                config.Executor.Output = config.Output;
+            }
+
             config.Input.Executor = config.Executor;
             return config;
         }
