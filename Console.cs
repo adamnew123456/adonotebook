@@ -18,23 +18,14 @@ namespace ADONotebook
         }
 
         /// <summary>
-        ///   Renders a data table to stdout, including column headings and
-        ///   types, which are right-justified column-by-column.
+        ///   Renders a table's columns to standard output, returning the width of each column.
         /// </summary>
-        public static void RenderDataTable(DataTable table)
+        public static int[] RenderDataColumns(DataColumn[] columns)
         {
-            var maxColumnLength = new int[table.Columns.Count];
-            for (var i = 0; i < table.Columns.Count; i++)
+            var maxColumnLengths = new int[columns.Length];
+            for (var i = 0; i < columns.Length; i++)
             {
                 maxColumnLength[i] = Math.Max(table.Columns[i].ColumnName.Length, table.Columns[i].DataType.ToString().Length + 2);
-            }
-
-            foreach (DataRow row in table.Rows)
-            {
-                for (var i = 0; i < table.Columns.Count; i++)
-                {
-                    maxColumnLength[i] = Math.Max(maxColumnLength[i], row[i].ToString().Length + 2);
-                }
             }
 
             for (var i = 0; i < table.Columns.Count; i++)
@@ -57,12 +48,25 @@ namespace ADONotebook
                 Console.Write(" ");
             }
             Console.WriteLine();
+        }
 
+        /// <summary>
+        ///   Renders a data table to stdout, including column headings and
+        ///   types, which are right-justified column-by-column.
+        /// </summary>
+        public static void RenderDataTable(DataTable table, int[] maxColumnLengths)
+        {
             foreach (DataRow row in table.Rows)
             {
                 for (var i = 0; i < table.Columns.Count; i++)
                 {
-                    Console.Write(row[i].ToString().PadRight(maxColumnLength[i]));
+                    var paddedValue = row[i].ToString().PadRight(maxColumnLengths[i]);
+                    if (paddedValue.Length > maxColumnLengths[i])
+                    {
+                        paddedValue = paddedValue.Substring(0, maxColumnLengths[i] - 2) + "..";
+                    }
+
+                    Console.Write(paddedValue);
                     Console.Write(" ");
                 }
                 Console.WriteLine();
@@ -133,6 +137,8 @@ namespace ADONotebook
 
     public class ConsoleOutput : QueryOutput
     {
+        private int[] MaxColumnLengths;
+
         /// <summary>
         ///   Displays an error message on stdout.
         /// </summary>
@@ -150,12 +156,20 @@ namespace ADONotebook
         }
 
         /// <summary>
+        ///     Displays the column listing.
+        /// </summary>
+        public void DisplayColumns(DataColumn[] columns)
+        {
+            MaxColumnLengths = ConsoleUtils.RenderDataColumns(columns);
+        }
+
+        /// <summary>
         ///   Displays a page of results, and prompts the user to continue
         ///   displaying.
         /// </summary>
         public bool DisplayPage(DataTable table)
         {
-            ConsoleUtils.RenderDataTable(table);
+            ConsoleUtils.RenderDataTable(table, MaxColumnLengths);
             return ConsoleUtils.Prompt("Enter to continue, or q to quit").Trim() != "q";
         }
 
@@ -164,7 +178,7 @@ namespace ADONotebook
         /// </summary>
         public void DisplayLastPage(DataTable table)
         {
-            ConsoleUtils.RenderDataTable(table);
+            ConsoleUtils.RenderDataTable(table, MaxColumnLengths);
         }
     }
 }

@@ -34,12 +34,15 @@ namespace ADONotebook
         // produce results
         void DisplayResultCount(int count);
 
+        // Displays the column metadata for a result
+        void DisplayColumns(DataColumn[] columns);
+
         // Displays a page of result records, and prompts for whether to
         // display the next page
         bool DisplayPage(DataTable table);
 
         // Displays the last page of result records, without prompting
-        // for continuation
+        // for continuation.
         void DisplayLastPage(DataTable table);
     }
 }

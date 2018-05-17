@@ -73,7 +73,10 @@ namespace ADONotebook
                 table.Rows.Add(row);
             }
 
-            Output.DisplayLastPage(table);
+            if (table.Rows.Count > 0)
+            {
+                Output.DisplayLastPage(table);
+            }
         }
 
         /// <summary>
@@ -98,6 +101,10 @@ namespace ADONotebook
                     }
                     else
                     {
+                        var columns = new DataColumn[table.Columns.Count];
+                        table.Columns.CopyTo(columns, 0);
+                        Output.DisplayColumns(columns);
+
                         PaginateResults(reader);
                     }
                 }
