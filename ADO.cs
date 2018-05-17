@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Reflection;
@@ -112,6 +113,86 @@ namespace ADONotebook
             catch (Exception error)
             {
                 Output.DisplayError(error.ToString());
+            }
+        }
+
+        /// <summary>
+        ///   Gets a list of tables from the data source.
+        /// </summary>
+        public List<TableMetadata> Tables()
+        {
+            try
+            {
+                var commonConnection = Connection as DbConnection;
+                var dataTable = commonConnection.GetSchema("Tables");
+
+                var tables = new List<TableMetadata>();
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
+                                                  row["TABLE_NAME"] as string);
+                    tables.Add(entry);
+                }
+                return tables;
+            }
+            catch (Exception error)
+            {
+                Output.DisplayError("Could not retrieve tables: " + error.ToString());
+                return new List<TableMetadata>();
+            }
+        }
+
+        /// <summary>
+        ///   Gets a list of views from the data source.
+        /// </summary>
+        public List<TableMetadata> Views()
+        {
+            try
+            {
+                var commonConnection = Connection as DbConnection;
+                var dataTable = commonConnection.GetSchema("Views");
+
+                var tables = new List<TableMetadata>();
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
+                                                  row["TABLE_NAME"] as string);
+                    tables.Add(entry);
+                }
+                return tables;
+            }
+            catch (Exception error)
+            {
+                Output.DisplayError("Could not retrieve tables: " + error.ToString());
+                return new List<TableMetadata>();
+            }
+        }
+
+        /// <summary>
+        ///   Gets a list of columns from the data source.
+        /// </summary>
+        public List<ColumnMetadata> Columns()
+        {
+            try
+            {
+                var commonConnection = Connection as DbConnection;
+                var dataTable = commonConnection.GetSchema("Columns");
+
+                var columns = new List<ColumnMetadata>();
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    var entry = new ColumnMetadata(row["TABLE_CATALOG"] as string,
+                                                   row["TABLE_NAME"] as string,
+                                                   row["COLUMN_NAME"] as string,
+                                                   row["DATA_TYPE"] as string);
+                    columns.Add(entry);
+                }
+                return columns;
+            }
+            catch (Exception error)
+            {
+                Output.DisplayError("Could not retrieve columns: " + error.ToString());
+                return new List<ColumnMetadata>();
             }
         }
     }

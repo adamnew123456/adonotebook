@@ -157,6 +157,72 @@ namespace ADONotebook
         }
 
         [JsonRpcMethod]
+        private List<TableMetadata> tables()
+        {
+            var temporaryOutput = Output == null;
+            if (temporaryOutput)
+            {
+                Output = new JsonRpcOutput();
+                Executor.Output = Output;
+            }
+
+            var results = Executor.Tables();
+            CheckOutput();
+
+            if (temporaryOutput)
+            {
+                Output = null;
+                Executor.Output = null;
+            }
+
+            return results;
+        }
+
+        [JsonRpcMethod]
+        private List<TableMetadata> views()
+        {
+            var temporaryOutput = Output == null;
+            if (temporaryOutput)
+            {
+                Output = new JsonRpcOutput();
+                Executor.Output = Output;
+            }
+
+            var results = Executor.Views();
+            CheckOutput();
+
+            if (temporaryOutput)
+            {
+                Output = null;
+                Executor.Output = null;
+            }
+
+            return results;
+        }
+
+        [JsonRpcMethod]
+        private List<ColumnMetadata> columns()
+        {
+            var temporaryOutput = Output == null;
+            if (temporaryOutput)
+            {
+                Output = new JsonRpcOutput();
+                Executor.Output = Output;
+            }
+
+            var results = Executor.Columns();
+            CheckOutput();
+
+            if (temporaryOutput)
+            {
+                Output = null;
+                Executor.Output = null;
+            }
+
+            return results;
+        }
+
+        [JsonRpcMethod]
         private int count()
         {
             CheckOutput();
