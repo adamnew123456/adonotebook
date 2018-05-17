@@ -20,6 +20,15 @@ namespace ADONotebook
             Proxy = new JsonRpcProxy();
         }
 
+        private void SetOutputContent(HttpListenerResponse response, string content)
+        {
+            var bytes = Encoding.UTF8.GetBytes(content);
+
+            response.ContentLength64 = bytes.Length;
+            response.OutputStream.Write(bytes, 0, bytes.Length);
+            response.OutputStream.Close();
+        }
+
         public void Run()
         {
             Proxy.Executor = Executor;
@@ -39,16 +48,30 @@ namespace ADONotebook
                     var context = listener.GetContext();
                     context.Response.ContentType = "application/json";
 
+                    if (context.Request.HttpMethod != "POST")
+                    {
+                        context.Response.StatusCode = 405;
+                        context.Response.StatusDescription = "Illegal Method";
+
+                        var errorResponse = "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32000, \"message\": \"Only the POST method is allowed\"}, \"id\": null}";
+                        SetOutputContent(context.Response, errorResponse);
+                        continue;
+                    }
+
+                    if (context.Request.Url.PathAndQuery != "/")
+                    {
+                        context.Response.StatusCode = 404;
+                        context.Response.StatusDescription = "Not Found";
+
+                        var errorResponse = "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32001, \"message\": \"Only the path / is allowed\"}, \"id\": null}";
+                        SetOutputContent(context.Response, errorResponse);
+                        continue;
+                    }
+
                     if (context.Request.ContentType != "application/json")
                     {
-                        Console.WriteLine("Got non-JSON request");
-
                         var errorResponse = "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": null}";
-                        var errorResponseBytes = Encoding.UTF8.GetBytes(errorResponse);
-
-                        context.Response.ContentLength64 = errorResponseBytes.Length;
-                        context.Response.OutputStream.Write(errorResponseBytes, 0, errorResponseBytes.Length);
-                        context.Response.Close();
+                        SetOutputContent(context.Response, errorResponse);
                         continue;
                     }
 
@@ -68,13 +91,8 @@ namespace ADONotebook
                         .Process(input)
                         .ContinueWith(result => {
                                 Console.WriteLine("Delivering result:");
-                                result.Wait();
                                 Console.WriteLine(result.Result);
-
-                                var responseBytes = Encoding.UTF8.GetBytes(result.Result);
-                                context.Response.ContentLength64 = responseBytes.Length;
-                                context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
-                                context.Response.OutputStream.Close();
+                                SetOutputContent(context.Response, result.Result);
                             })
                         .Wait();
                 }
@@ -115,6 +133,11 @@ namespace ADONotebook
         [JsonRpcMethod]
         private bool execute(string sql)
         {
+            if (Output != null)
+            {
+                throw new InvalidOperationException("Please finish your existing query before running another one");
+            }
+
             Output = new JsonRpcOutput();
             Executor.Output = Output;
             Executor.ProcessQuery(sql);
