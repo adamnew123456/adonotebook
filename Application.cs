@@ -14,16 +14,9 @@ namespace ADONotebook
             Environment.Exit(1);
         }
 
-        private struct RunConfiguration
+        private static ADOQueryExecutor ParseArguments(string[] Args)
         {
-            public QueryInput Input;
-            public QueryExecutor Executor;
-            public QueryOutput Output;
-        }
-
-        private static RunConfiguration? ParseArguments(string[] Args)
-        {
-            var config = new RunConfiguration();
+            ADOQueryExecutor executor = null;
 
             try
             {
@@ -31,42 +24,23 @@ namespace ADONotebook
                 {
                     switch (Args[i])
                     {
-                        case "-s":
-                            if (config.Input != null)
-                            {
-                                PrintUsageAndDie();
-                            }
-
-                            config.Input = new JsonRpcInput();
-                            break;
-
-                        case "-c":
-                            if (config.Input != null)
-                            {
-                                PrintUsageAndDie();
-                            }
-
-                            config.Input = new ConsoleInput();
-                            config.Output = new ConsoleOutput();
-                            break;
-
                         case "-f":
-                            if (config.Executor != null)
+                            if (executor != null)
                             {
                                 PrintUsageAndDie();
                             }
 
-                            config.Executor = new ADOProviderFactoryExecutor(Args[i + 1], Args[i + 2]);
+                            executor = new ADOProviderFactoryExecutor(Args[i + 1], Args[i + 2]);
                             i += 2;
                             break;
 
                         case "-r":
-                            if (config.Executor != null)
+                            if (executor != null)
                             {
                                 PrintUsageAndDie();
                             }
 
-                            config.Executor = new ADOReflectionExecutor(Args[i + 1], Args[i + 2], Args[i + 3]);
+                            executor = new ADOReflectionExecutor(Args[i + 1], Args[i + 2], Args[i + 3]);
                             i += 3;
                             break;
                     }
@@ -77,26 +51,16 @@ namespace ADONotebook
                 return null;
             }
 
-            if (config.Input == null || config.Executor == null)
-            {
-                return null;
-            }
-
-            if (config.Output != null)
-            {
-                config.Executor.Output = config.Output;
-            }
-
-            config.Input.Executor = config.Executor;
-            return config;
+            return executor;
         }
 
         public static void Main(string[] Args)
         {
-            var config = ParseArguments(Args);
-            if (config == null) PrintUsageAndDie();
+            var executor = ParseArguments(Args);
+            if (executor == null) PrintUsageAndDie();
 
-            config.Value.Input.Run();
+            var server = new JsonRpcServer("http://localhost:1995/");
+            server.Run(executor);
         }
     }
 }

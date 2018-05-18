@@ -40,12 +40,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Interfaces.cs" />
-    <Compile Include="Console.cs" />
     <Compile Include="RPC.cs" />
     <Compile Include="ADO.cs" />
     <Compile Include="Application.cs" />
-    <Compile Include="SqlLexer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

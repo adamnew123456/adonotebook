@@ -7,12 +7,114 @@ using System.Text;
 
 namespace ADONotebook
 {
-    public abstract class ADOQueryExecutor : QueryExecutor
+    public class TableMetadata
     {
-        public QueryOutput Output { get; set; }
+        public string Catalog { get; private set; }
+        public string Table { get; private set; }
 
+        public TableMetadata(string catalog, string table)
+        {
+            Catalog = catalog;
+            Table = table;
+        }
+    }
+
+    public class ColumnMetadata
+    {
+        public string Catalog { get; private set; }
+        public string Table { get; private set; }
+        public string Column { get; private set; }
+        public string DataType { get; private set; }
+
+        public ColumnMetadata(string catalog, string table, string column, string datatype)
+        {
+            Catalog = catalog;
+            Table = table;
+            Column = column;
+            DataType = datatype;
+        }
+    }
+
+    public class ADORequestPaginator
+    {
+        public DataColumn[] Columns { get; private set; }
+        public int ResultCount;
+
+        private IDataReader Reader;
+        private DataTable CurrentPage;
+        private int PageSize = 100;
+
+        public ADORequestPaginator(IDataReader reader)
+        {
+            Reader = reader;
+
+            CurrentPage = new DataTable();
+            ReadColumnMetadata();
+            ReadResultCount();
+        }
+
+        private void ReadColumnMetadata()
+        {
+            for (var i = 0; i < Reader.FieldCount; i++)
+            {
+                var column = new DataColumn(Reader.GetName(i), Reader.GetFieldType(i));
+                CurrentPage.Columns.Add(column);
+            }
+
+            Columns = new DataColumn[CurrentPage.Columns.Count];
+            CurrentPage.Columns.CopyTo(Columns, 0);
+        }
+
+        private void ReadResultCount()
+        {
+            if (CurrentPage.Columns.Count == 0)
+            {
+                ResultCount = Reader.RecordsAffected;
+            }
+            else
+            {
+                ResultCount = -1;
+            }
+        }
+
+        /// <summary>
+        ///   Returns a page of results from the data source, possibly empty.
+        /// </summary>
+        public DataTable NextPage()
+        {
+            while (Reader.Read())
+            {
+                if (CurrentPage.Rows.Count == PageSize)
+                {
+                    break;
+                }
+
+                var row = CurrentPage.NewRow();
+                for (int i = 0; i < Columns.Length; i++)
+                {
+                    row[i] = Reader[i];
+                }
+
+                CurrentPage.Rows.Add(row);
+            }
+
+            var result = CurrentPage.Copy();
+            CurrentPage.Clear();
+            return result;
+        }
+
+        /// <summary>
+        ///   Closes the current request to the data source.
+        /// </summary>
+        public void Close()
+        {
+            Reader.Close();
+        }
+    }
+
+    public abstract class ADOQueryExecutor
+    {
         protected IDbConnection Connection;
-        private readonly int PageSize = 100;
 
         abstract public void Open();
 
@@ -24,96 +126,18 @@ namespace ADONotebook
             Connection.Close();
         }
 
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            Connection.Dispose();
-        }
-
         /// <summary>
-        ///   Builds an empty data table from the column metadata in a reader.
+        ///   Executes a single query against the connection, and returns a
+        ///   result paginator.
         /// </summary>
-        private DataTable BuildDataTable(IDataReader reader)
-        {
-            var table = new DataTable();
-            for (var i = 0; i < reader.FieldCount; i++)
-            {
-                var column = new DataColumn(reader.GetName(i), reader.GetFieldType(i));
-                table.Columns.Add(column);
-            }
-
-            return table;
-        }
-
-        /// <summary>
-        ///   Reads results from the reader, passing them to the output once an
-        ///   entire page is built.
-        /// </summary>
-        private void PaginateResults(IDataReader reader)
-        {
-            var table = BuildDataTable(reader);
-            while (reader.Read())
-            {
-                if (table.Rows.Count == PageSize)
-                {
-                    if (!Output.DisplayPage(table)) return;
-                    table.Rows.Clear();
-                }
-
-                var row = table.NewRow();
-                for (var i = 0; i < reader.FieldCount; i++)
-                {
-                    row[i] = reader[i];
-                }
-
-                table.Rows.Add(row);
-            }
-
-            if (table.Rows.Count > 0)
-            {
-                Output.DisplayLastPage(table);
-            }
-        }
-
-        /// <summary>
-        ///   Executes a single query against the connection, and passes the
-        ///   results to the output. The connection must have been opened first.
-        /// </summary>
-        public void ProcessQuery(string sql)
+        public ADORequestPaginator Execute(string sql)
         {
             var command = Connection.CreateCommand();
             command.CommandType = CommandType.Text;
             command.CommandText = sql;
 
-            try
-            {
-                using (var reader = command.ExecuteReader())
-                {
-                    var table = BuildDataTable(reader);
-
-                    if (reader.FieldCount == 0)
-                    {
-                        Output.DisplayResultCount(reader.RecordsAffected);
-                    }
-                    else
-                    {
-                        var columns = new DataColumn[table.Columns.Count];
-                        table.Columns.CopyTo(columns, 0);
-                        Output.DisplayColumns(columns);
-
-                        PaginateResults(reader);
-                    }
-                }
-            }
-            catch (Exception error)
-            {
-                Output.DisplayError(error.ToString());
-            }
+            var reader = command.ExecuteReader();
+            return new ADORequestPaginator(reader);
         }
 
         /// <summary>
@@ -121,25 +145,17 @@ namespace ADONotebook
         /// </summary>
         public List<TableMetadata> Tables()
         {
-            try
-            {
-                var commonConnection = Connection as DbConnection;
-                var dataTable = commonConnection.GetSchema("Tables");
+            var commonConnection = Connection as DbConnection;
+            var dataTable = commonConnection.GetSchema("Tables");
 
-                var tables = new List<TableMetadata>();
-                foreach (DataRow row in dataTable.Rows)
-                {
-                    var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
-                                                  row["TABLE_NAME"] as string);
-                    tables.Add(entry);
-                }
-                return tables;
-            }
-            catch (Exception error)
+            var tables = new List<TableMetadata>();
+            foreach (DataRow row in dataTable.Rows)
             {
-                Output.DisplayError("Could not retrieve tables: " + error.ToString());
-                return new List<TableMetadata>();
+                var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
+                                              row["TABLE_NAME"] as string);
+                tables.Add(entry);
             }
+            return tables;
         }
 
         /// <summary>
@@ -147,25 +163,17 @@ namespace ADONotebook
         /// </summary>
         public List<TableMetadata> Views()
         {
-            try
-            {
-                var commonConnection = Connection as DbConnection;
-                var dataTable = commonConnection.GetSchema("Views");
+            var commonConnection = Connection as DbConnection;
+            var dataTable = commonConnection.GetSchema("Views");
 
-                var tables = new List<TableMetadata>();
-                foreach (DataRow row in dataTable.Rows)
-                {
-                    var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
-                                                  row["TABLE_NAME"] as string);
-                    tables.Add(entry);
-                }
-                return tables;
-            }
-            catch (Exception error)
+            var tables = new List<TableMetadata>();
+            foreach (DataRow row in dataTable.Rows)
             {
-                Output.DisplayError("Could not retrieve tables: " + error.ToString());
-                return new List<TableMetadata>();
+                var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
+                                              row["TABLE_NAME"] as string);
+                tables.Add(entry);
             }
+            return tables;
         }
 
         /// <summary>
@@ -173,27 +181,19 @@ namespace ADONotebook
         /// </summary>
         public List<ColumnMetadata> Columns()
         {
-            try
-            {
-                var commonConnection = Connection as DbConnection;
-                var dataTable = commonConnection.GetSchema("Columns");
+            var commonConnection = Connection as DbConnection;
+            var dataTable = commonConnection.GetSchema("Columns");
 
-                var columns = new List<ColumnMetadata>();
-                foreach (DataRow row in dataTable.Rows)
-                {
-                    var entry = new ColumnMetadata(row["TABLE_CATALOG"] as string,
-                                                   row["TABLE_NAME"] as string,
-                                                   row["COLUMN_NAME"] as string,
-                                                   row["DATA_TYPE"] as string);
-                    columns.Add(entry);
-                }
-                return columns;
-            }
-            catch (Exception error)
+            var columns = new List<ColumnMetadata>();
+            foreach (DataRow row in dataTable.Rows)
             {
-                Output.DisplayError("Could not retrieve columns: " + error.ToString());
-                return new List<ColumnMetadata>();
+                var entry = new ColumnMetadata(row["TABLE_CATALOG"] as string,
+                                                row["TABLE_NAME"] as string,
+                                                row["COLUMN_NAME"] as string,
+                                                row["DATA_TYPE"] as string);
+                columns.Add(entry);
             }
+            return columns;
         }
     }
 

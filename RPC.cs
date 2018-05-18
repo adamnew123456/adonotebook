@@ -10,14 +10,13 @@ using AustinHarris.JsonRpc;
 
 namespace ADONotebook
 {
-    public class JsonRpcInput : QueryInput
+    public class JsonRpcServer
     {
-        public QueryExecutor Executor { get; set; }
-        private JsonRpcProxy Proxy;
+        private string Endpoint;
 
-        public JsonRpcInput()
+        public JsonRpcServer(string endpoint)
         {
-            Proxy = new JsonRpcProxy();
+            Endpoint = endpoint;
         }
 
         private void SetOutputContent(HttpListenerResponse response, string content)
@@ -29,21 +28,24 @@ namespace ADONotebook
             response.OutputStream.Close();
         }
 
-        public void Run()
+        /// <summary>
+        ///   Runs the RPC server, until it receives a call of the "quit" method.
+        /// </summary>
+        public void Run(ADOQueryExecutor executor)
         {
-            Proxy.Executor = Executor;
+            var proxy = new JsonRpcProxy(executor);
 
             var listener = new HttpListener();
-            listener.Prefixes.Add("http://localhost:1995/");
+            listener.Prefixes.Add(Endpoint);
 
-            Console.WriteLine("Awaiting requests on http://localhost:1995/");
+            Console.WriteLine("Awaiting requests on {0}", Endpoint);
             listener.Start();
 
             try
             {
-                Executor.Open();
+                executor.Open();
 
-                while (!Proxy.Finished)
+                while (!proxy.Finished)
                 {
                     var context = listener.GetContext();
                     context.Response.ContentType = "application/json";
@@ -100,7 +102,7 @@ namespace ADONotebook
             catch (Exception)
             {
                 listener.Stop();
-                Executor.Close();
+                executor.Close();
                 throw;
             }
         }
@@ -120,57 +122,65 @@ namespace ADONotebook
 
     class JsonRpcProxy : JsonRpcService
     {
-        public QueryExecutor Executor;
-        private JsonRpcOutput Output;
-
         public bool Finished { get; private set; }
 
-        public JsonRpcProxy() : base()
+        private ADOQueryExecutor Executor;
+        private ADORequestPaginator Paginator;
+
+        public JsonRpcProxy(ADOQueryExecutor executor) : base()
         {
             Finished = false;
+            Executor = executor;
+        }
+
+        [JsonRpcMethod]
+        private List<TableMetadata> tables()
+        {
+            var results = Executor.Tables();
+            return results;
+        }
+
+        [JsonRpcMethod]
+        private List<TableMetadata> views()
+        {
+            var results = Executor.Views();
+            return results;
+        }
+
+        [JsonRpcMethod]
+        private List<ColumnMetadata> columns()
+        {
+            var results = Executor.Columns();
+            return results;
         }
 
         [JsonRpcMethod]
         private bool execute(string sql)
         {
-            if (Output != null)
+            if (Paginator != null)
             {
                 throw new InvalidOperationException("Please finish your existing query before running another one");
             }
 
-            Output = new JsonRpcOutput();
-            Executor.Output = Output;
-            Executor.ProcessQuery(sql);
+            Paginator = Executor.Execute(sql);
             return true;
         }
 
-        private void CheckOutput()
+        private void CheckPaginator()
         {
-            if (Output == null)
+            if (Paginator == null)
             {
-                throw new InvalidOperationException("Cannot call this function without current query");
-            }
-
-            if (Output.ErrorMessage != null)
-            {
-                throw new InvalidOperationException("The provider threw an exception: " + Output.ErrorMessage);
+                throw new InvalidOperationException("Cannot call this function without a current query");
             }
         }
 
         [JsonRpcMethod]
         private ReaderMetadata metadata()
         {
-            CheckOutput();
-
+            CheckPaginator();
             var metadata = new ReaderMetadata();
 
-
-            if (Output.Columns == null)
-            {
-                return metadata;
-            }
-
-            foreach (var column in Output.Columns)
+            foreach (var column in Paginator.Columns)
             {
                 metadata.ColumnNames.Add(column.ColumnName);
                 metadata.ColumnTypes.Add(column.DataType.ToString());
@@ -180,100 +190,29 @@ namespace ADONotebook
         }
 
         [JsonRpcMethod]
-        private List<TableMetadata> tables()
-        {
-            var temporaryOutput = Output == null;
-            if (temporaryOutput)
-            {
-                Output = new JsonRpcOutput();
-                Executor.Output = Output;
-            }
-
-            var results = Executor.Tables();
-            CheckOutput();
-
-            if (temporaryOutput)
-            {
-                Output = null;
-                Executor.Output = null;
-            }
-
-            return results;
-        }
-
-        [JsonRpcMethod]
-        private List<TableMetadata> views()
-        {
-            var temporaryOutput = Output == null;
-            if (temporaryOutput)
-            {
-                Output = new JsonRpcOutput();
-                Executor.Output = Output;
-            }
-
-            var results = Executor.Views();
-            CheckOutput();
-
-            if (temporaryOutput)
-            {
-                Output = null;
-                Executor.Output = null;
-            }
-
-            return results;
-        }
-
-        [JsonRpcMethod]
-        private List<ColumnMetadata> columns()
-        {
-            var temporaryOutput = Output == null;
-            if (temporaryOutput)
-            {
-                Output = new JsonRpcOutput();
-                Executor.Output = Output;
-            }
-
-            var results = Executor.Columns();
-            CheckOutput();
-
-            if (temporaryOutput)
-            {
-                Output = null;
-                Executor.Output = null;
-            }
-
-            return results;
-        }
-
-        [JsonRpcMethod]
         private int count()
         {
-            CheckOutput();
-
-            if (Output.ResultCount == -1)
+            CheckPaginator();
+            if (Paginator.ResultCount == -1)
             {
                 throw new InvalidOperationException("Cannot get result count from query that returns data");
             }
 
-            return Output.ResultCount;
+            return Paginator.ResultCount;
         }
 
         [JsonRpcMethod]
         private List<Dictionary<string, string>> page()
         {
-            CheckOutput();
-
+            CheckPaginator();
             var outputRows = new List<Dictionary<string, string>>();
-            if (Output.Pages.Count == 0)
-            {
-                return outputRows;
-            }
+            var page = Paginator.NextPage();
 
-            foreach (DataRow row in Output.Pages[0].Rows)
+            foreach (DataRow row in page.Rows)
             {
                 var outputRow = new Dictionary<string, string>();
 
-                foreach (var column in Output.Columns)
+                foreach (var column in Paginator.Columns)
                 {
                     var data = row[column.ColumnName];
                     if (data == null)
@@ -289,63 +228,28 @@ namespace ADONotebook
                 outputRows.Add(outputRow);
             }
 
-            Output.Pages.RemoveAt(0);
             return outputRows;
         }
 
         [JsonRpcMethod]
         private bool finish()
         {
-            Executor.Output = null;
-            Output = null;
+            CheckPaginator();
+            Paginator.Close();
+            Paginator = null;
             return true;
         }
 
         [JsonRpcMethod]
         private bool quit()
         {
+            if (Paginator != null)
+            {
+                throw new InvalidOperationException("Cannot quit before finishing current query");
+            }
+
             Finished = true;
             return true;
-        }
-    }
-
-    public class JsonRpcOutput : QueryOutput
-    {
-        public DataColumn[] Columns { get; private set; }
-        public List<DataTable> Pages { get; private set; }
-        public int ResultCount { get; private set; }
-        public string ErrorMessage { get; private set; }
-
-        public JsonRpcOutput()
-        {
-            ResultCount = -1;
-            Pages = new List<DataTable>();
-        }
-
-        public void DisplayError(string error)
-        {
-            ErrorMessage = error;
-        }
-
-        public void DisplayResultCount(int count)
-        {
-            ResultCount = count;
-        }
-
-        public void DisplayColumns(DataColumn[] columns)
-        {
-            Columns = columns;
-        }
-
-        public bool DisplayPage(DataTable table)
-        {
-            Pages.Add(table.Copy());
-            return true;
-        }
-
-        public void DisplayLastPage(DataTable table)
-        {
-            Pages.Add(table.Copy());
         }
     }
 }
