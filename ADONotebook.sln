@@ -1,7 +1,9 @@
 
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{7157DEE2-A9F7-4A1D-A772-855A8E1EBD4C}") = "adonotebook", "adonotebook.csproj", "{A73A7C33-5BD1-466F-8132-01F28FF1C813}"
+Project("{7157DEE2-A9F7-4A1D-A772-855A8E1EBD4C}") = "ADONotebook.Server", "ADONotebook.Server\ADONotebook.Server.csproj", "{A73A7C33-5BD1-466F-8132-01F28FF1C813}"
+EndProject
+Project("{7157DEE2-A9F7-4A1D-A772-855A8E1EBD4C}") = "ADONotebook.CLI", "ADONotebook.CLI\ADONotebook.CLI.csproj", "{7296453D-EBC4-454E-BC00-422B39506C47}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,5 +15,9 @@ Global
 		{A73A7C33-5BD1-466F-8132-01F28FF1C813}.Debug|x86.Build.0 = Debug|x86
 		{A73A7C33-5BD1-466F-8132-01F28FF1C813}.Release|x86.ActiveCfg = Release|x86
 		{A73A7C33-5BD1-466F-8132-01F28FF1C813}.Release|x86.Build.0 = Release|x86
+		{7296453D-EBC4-454E-BC00-422B39506C47}.Debug|x86.ActiveCfg = Debug|x86
+		{7296453D-EBC4-454E-BC00-422B39506C47}.Debug|x86.Build.0 = Debug|x86
+		{7296453D-EBC4-454E-BC00-422B39506C47}.Release|x86.ActiveCfg = Release|x86
+		{7296453D-EBC4-454E-BC00-422B39506C47}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 EndGlobal

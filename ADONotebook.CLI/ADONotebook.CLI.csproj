@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{A73A7C33-5BD1-466F-8132-01F28FF1C813}</ProjectGuid>
+    <ProjectGuid>{7296453D-EBC4-454E-BC00-422B39506C47}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>ADONotebook</RootNamespace>
     <AssemblyName>ADONotebook</AssemblyName>
@@ -33,16 +33,13 @@
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="Newtonsoft.JSON">
-      <HintPath>packages\Newtonsoft.Json.9.0.1\lib\net40\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net40\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="AustinHarris.JsonRpc">
-      <HintPath>packages\AustinHarris.JsonRpc.1.1.70\lib\net40\AustinHarris.JsonRpc.dll</HintPath>
+      <HintPath>..\packages\AustinHarris.JsonRpc.1.1.70\lib\net40\AustinHarris.JsonRpc.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="RPC.cs" />
-    <Compile Include="ADO.cs" />
-    <Compile Include="Application.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
