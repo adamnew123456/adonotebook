@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -8,21 +9,34 @@ namespace ADONotebook
 {
     public class ReaderMetadata
     {
+        [JsonProperty("columnnames")]
         public List<string> ColumnNames;
+
+        [JsonProperty("columntypes")]
         public List<string> ColumnTypes;
     }
 
     public class TableMetadata
     {
+        [JsonProperty("catalog")]
         public string Catalog;
+
+        [JsonProperty("table")]
         public string Table;
     }
 
     public class ColumnMetadata
     {
+        [JsonProperty("catalog")]
         public string Catalog;
+
+        [JsonProperty("table")]
         public string Table;
+
+        [JsonProperty("column")]
         public string Column;
+
+        [JsonProperty("datatype")]
         public string DataType;
     }
 

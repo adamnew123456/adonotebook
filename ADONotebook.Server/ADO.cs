@@ -5,11 +5,16 @@ using System.Data.Common;
 using System.Reflection;
 using System.Text;
 
+using Newtonsoft.Json;
+
 namespace ADONotebook
 {
     public class TableMetadata
     {
+        [JsonProperty("catalog")]
         public string Catalog { get; private set; }
+
+        [JsonProperty("table")]
         public string Table { get; private set; }
 
         public TableMetadata(string catalog, string table)
@@ -21,9 +26,16 @@ namespace ADONotebook
 
     public class ColumnMetadata
     {
+        [JsonProperty("catalog")]
         public string Catalog { get; private set; }
+
+        [JsonProperty("table")]
         public string Table { get; private set; }
+
+        [JsonProperty("column")]
         public string Column { get; private set; }
+
+        [JsonProperty("datatype")]
         public string DataType { get; private set; }
 
         public ColumnMetadata(string catalog, string table, string column, string datatype)

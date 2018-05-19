@@ -7,6 +7,7 @@ using System.Net;
 using System.Text;
 
 using AustinHarris.JsonRpc;
+using Newtonsoft.Json;
 
 namespace ADONotebook
 {
@@ -123,7 +124,10 @@ namespace ADONotebook
 
     class ReaderMetadata
     {
+        [JsonProperty("columnnames")]
         public List<string> ColumnNames;
+
+        [JsonProperty("columntypes")]
         public List<string> ColumnTypes;
 
         public ReaderMetadata()
