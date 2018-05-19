@@ -1,10 +1,123 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace ADONotebook
 {
     public class Application
     {
+        private static int[] ComputePrintingWidth(ReaderMetadata columns, List<Dictionary<string, string>> page)
+        {
+            var maxLengths = new int[columns.ColumnNames.Count];
+            for (var i = 0; i < columns.ColumnNames.Count; i++)
+            {
+                maxLengths[i] = Math.Max(maxLengths[i], columns.ColumnNames[i].Length);
+            }
+
+            for (var i = 0; i < columns.ColumnTypes.Count; i++)
+            {
+                maxLengths[i] = Math.Max(maxLengths[i], columns.ColumnTypes[i].Length);
+            }
+
+            foreach (var row in page)
+            {
+                for (var i = 0; i < columns.ColumnNames.Count; i++)
+                {
+                    maxLengths[i] = Math.Max(maxLengths[i], row[columns.ColumnNames[i]].Length);
+                }
+            }
+
+            return maxLengths;
+        }
+
+        private static bool DisplayPage(ReaderMetadata columns, List<Dictionary<string, string>> page, bool promptForContinuation)
+        {
+            var columnPadding = ComputePrintingWidth(columns, page);
+            for (var i = 0; i < columns.ColumnNames.Count; i++)
+            {
+                Console.Write(columns.ColumnNames[i].PadRight(columnPadding[i]));
+                Console.Write(" ");
+            }
+            Console.WriteLine();
+
+            for (var i = 0; i < columns.ColumnTypes.Count; i++)
+            {
+                Console.Write(columns.ColumnTypes[i].PadRight(columnPadding[i]));
+                Console.Write(" ");
+            }
+            Console.WriteLine();
+
+            for (var i = 0; i < columns.ColumnTypes.Count; i++)
+            {
+                Console.Write(new String('=', columnPadding[i]));
+                Console.Write(" ");
+            }
+            Console.WriteLine();
+
+            foreach (var row in page)
+            {
+                for (var i = 0; i < columns.ColumnNames.Count; i++)
+                {
+                    var column = columns.ColumnNames[i];
+                    Console.Write(row[column].PadRight(columnPadding[i]));
+                    Console.Write(" ");
+                }
+                Console.WriteLine();
+            }
+
+            if (!promptForContinuation)
+            {
+                return true;
+            }
+
+            Console.Write("Press Enter to continue, or q to quit: ");
+            var input = Console.ReadKey();
+            Console.WriteLine();
+            return input.KeyChar != 'q';
+        }
+
+        private static Tuple<ReaderMetadata, List<Dictionary<string, string>>> TableListingToPage(List<TableMetadata> tables)
+        {
+            var metadata = new ReaderMetadata
+            {
+                ColumnNames = new List<string> { "Catalog", "Table" },
+                ColumnTypes = new List<string> { "System.String", "System.String" }
+            };
+
+            var rows = new List<Dictionary<string, string>>();
+            foreach (var table in tables)
+            {
+                var row = new Dictionary<string, string>();
+                row["Catalog"] = table.Catalog;
+                row["Table"] = table.Table;
+                rows.Add(row);
+            }
+
+            return Tuple.Create(metadata, rows);
+        }
+
+        private static Tuple<ReaderMetadata, List<Dictionary<string, string>>> ColumnListingToPage(List<ColumnMetadata> columns)
+        {
+            var metadata = new ReaderMetadata
+            {
+                ColumnNames = new List<string> { "Catalog", "Table", "Column", "DataType" },
+                ColumnTypes = new List<string> { "System.String", "System.String", "System.String", "System.String" }
+            };
+
+            var rows = new List<Dictionary<string, string>>();
+            foreach (var column in columns)
+            {
+                var row = new Dictionary<string, string>();
+                row["Catalog"] = column.Catalog;
+                row["Table"] = column.Table;
+                row["Column"] = column.Column;
+                row["DataType"] = column.DataType;
+                rows.Add(row);
+            }
+
+            return Tuple.Create(metadata, rows);
+        }
+
         public static void Main(string[] Args)
         {
             RpcWrapper rpc = null;
@@ -18,56 +131,95 @@ namespace ADONotebook
                 Environment.Exit(1);
             }
 
-            Console.WriteLine("+++ Tables +++");
-            foreach (var table in rpc.RetrieveTables())
+            var done = false;
+            while (!done)
             {
-                Console.WriteLine("`{0}`.`{1}`", table.Catalog, table.Table);
-            }
+                var lexer = new SqlLexer();
+                var continuation = false;
+                var buffer = new StringBuilder();
 
-            Console.WriteLine("+++ Views +++");
-            foreach (var view in rpc.RetrieveViews())
-            {
-                Console.WriteLine("`{0}`.`{1}`", view.Catalog, view.Table);
-            }
-
-            Console.WriteLine("+++ Columns +++");
-            foreach (var column in rpc.RetrieveColumns())
-            {
-                Console.WriteLine("`{0}`.`{1}`.`{2}`", column.Catalog, column.Table, column.Column);
-            }
-
-            Console.WriteLine("+++ Executing Query: select * from Product +++");
-            rpc.ExecuteSql("select * from Product");
-
-            Console.WriteLine("+++ Retrieving Query Metdata +++");
-            var metadata = rpc.RetrieveQueryColumns();
-            for (var i = 0; i < metadata.ColumnNames.Count; i++)
-            {
-                Console.WriteLine("`{0}` :: {1}", metadata.ColumnNames[i], metadata.ColumnTypes[i]);
-            }
-
-            Console.WriteLine("+++ Paging Query +++");
-            var page = new List<Dictionary<string, string>>();
-            do
-            {
-                Console.WriteLine("### Page ###");
-                page = rpc.RetrievePage();
-
-                foreach (var row in page)
+                do
                 {
-                    foreach (var column in row.Keys)
+                    if (continuation)
                     {
-                        Console.WriteLine("{0}: {1}", column, row[column]);
+                        Console.Write(">>>> ");
                     }
-                    Console.WriteLine();
+                    else
+                    {
+                        Console.Write("sql> ");
+                        continuation = true;
+                    }
+
+                    var line = Console.ReadLine() + "\n";
+                    buffer.Append(line);
+                    lexer.Feed(line);
+                } while (lexer.State != LexerState.COMPLETE &&
+                         lexer.State != LexerState.ERROR);
+
+                if (lexer.State == LexerState.ERROR)
+                {
+                    Console.Error.WriteLine("Could not parse SQL");
+                    continue;
                 }
-            } while (page.Count > 0);
 
-            Console.WriteLine("+++ Finishing Query +++");
-            rpc.FinishQuery();
+                var sql = buffer.ToString().Trim();
+                switch (sql)
+                {
+                    case "quit;":
+                        rpc.Quit();
+                        done = true;
+                        break;
 
-            Console.WriteLine("+++ Terminating Server +++");
-            rpc.Quit();
+                    case "tables;":
+                        var tables = rpc.RetrieveTables();
+                        var tablePageInfo = TableListingToPage(tables);
+                        DisplayPage(tablePageInfo.Item1, tablePageInfo.Item2, false);
+                        break;
+
+                    case "views;":
+                        var views = rpc.RetrieveViews();
+                        var viewPageInfo = TableListingToPage(views);
+                        DisplayPage(viewPageInfo.Item1, viewPageInfo.Item2, false);
+                        break;
+
+                    case "columns;":
+                        var cols = rpc.RetrieveColumns();
+                        var colsPageInfo = ColumnListingToPage(cols);
+                        DisplayPage(colsPageInfo.Item1, colsPageInfo.Item2, false);
+                        break;
+
+                    default:
+                        try
+                        {
+                            rpc.ExecuteSql(sql);
+
+                            var resultColumns = rpc.RetrieveQueryColumns();
+                            if (resultColumns.ColumnNames.Count == 0)
+                            {
+                                Console.WriteLine("Records affected: {0}", rpc.RetrieveResultCount());
+                            }
+                            else
+                            {
+                                var page = new List<Dictionary<string, string>>();
+                                do
+                                {
+                                    page = rpc.RetrievePage();
+                                    if (page.Count > 0 && !DisplayPage(resultColumns, page, true))
+                                    {
+                                        break;
+                                    }
+                                } while (page.Count != 0);
+                            }
+
+                            rpc.FinishQuery();
+                        }
+                        catch (RpcException error)
+                        {
+                            Console.Error.WriteLine("Received error from server: {0}", error);
+                        }
+                        break;
+                }
+            }
         }
     }
 }

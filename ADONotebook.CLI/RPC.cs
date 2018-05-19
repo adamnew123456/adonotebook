@@ -70,7 +70,7 @@ namespace ADONotebook
             if (response.ContainsKey("error"))
             {
                 throw new RpcException(response["error"]["code"].ToObject<int>(),
-                                       response["error"]["message"].ToObject<string>());
+                                       response["error"]["data"]["Message"].ToObject<string>());
             }
 
             return response["result"];
