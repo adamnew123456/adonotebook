@@ -6,7 +6,7 @@
     <ProjectGuid>{A73A7C33-5BD1-466F-8132-01F28FF1C813}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>ADONotebook</RootNamespace>
-    <AssemblyName>ADONotebook</AssemblyName>
+    <AssemblyName>Server</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <ResolveNuGetPackages>false</ResolveNuGetPackages>
   </PropertyGroup>
