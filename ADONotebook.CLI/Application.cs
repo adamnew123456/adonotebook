@@ -166,26 +166,54 @@ namespace ADONotebook
                 switch (sql)
                 {
                     case "quit;":
-                        rpc.Quit();
-                        done = true;
+                        try
+                        {
+                            rpc.Quit();
+                            done = true;
+                        }
+                        catch (RpcException error)
+                        {
+                            Console.Error.WriteLine("Received error from server: {0}", error);
+                        }
                         break;
 
                     case "tables;":
-                        var tables = rpc.RetrieveTables();
-                        var tablePageInfo = TableListingToPage(tables);
-                        DisplayPage(tablePageInfo.Item1, tablePageInfo.Item2, false);
+                        try
+                        {
+                            var tables = rpc.RetrieveTables();
+                            var tablePageInfo = TableListingToPage(tables);
+                            DisplayPage(tablePageInfo.Item1, tablePageInfo.Item2, false);
+                        }
+                        catch (RpcException error)
+                        {
+                            Console.Error.WriteLine("Received error from server: {0}", error);
+                        }
                         break;
 
                     case "views;":
-                        var views = rpc.RetrieveViews();
-                        var viewPageInfo = TableListingToPage(views);
-                        DisplayPage(viewPageInfo.Item1, viewPageInfo.Item2, false);
+                        try
+                        {
+                            var views = rpc.RetrieveViews();
+                            var viewPageInfo = TableListingToPage(views);
+                            DisplayPage(viewPageInfo.Item1, viewPageInfo.Item2, false);
+                        }
+                        catch (RpcException error)
+                        {
+                            Console.Error.WriteLine("Received error from server: {0}", error);
+                        }
                         break;
 
                     case "columns;":
-                        var cols = rpc.RetrieveColumns();
-                        var colsPageInfo = ColumnListingToPage(cols);
-                        DisplayPage(colsPageInfo.Item1, colsPageInfo.Item2, false);
+                        try
+                        {
+                            var cols = rpc.RetrieveColumns();
+                            var colsPageInfo = ColumnListingToPage(cols);
+                            DisplayPage(colsPageInfo.Item1, colsPageInfo.Item2, false);
+                        }
+                        catch (RpcException error)
+                        {
+                            Console.Error.WriteLine("Received error from server: {0}", error);
+                        }
                         break;
 
                     default:
