@@ -28,7 +28,7 @@ namespace ADONotebook
 
     public class RpcException : Exception
     {
-        public RpcException(int code, string message) : base(String.Format("[{0}] {1}", code, message))
+        public RpcException(string message, string stacktrace) : base(String.Format("{0}\n{1}", message, stacktrace))
         {
         }
     }
@@ -69,8 +69,8 @@ namespace ADONotebook
             var response = JObject.Parse(responseRaw);
             if (response.ContainsKey("error"))
             {
-                throw new RpcException(response["error"]["code"].ToObject<int>(),
-                                       response["error"]["data"]["Message"].ToObject<string>());
+                throw new RpcException(response["error"]["message"].ToObject<string>(),
+                                       response["error"]["data"]["stacktrace"].ToObject<string>());
             }
 
             return response["result"];

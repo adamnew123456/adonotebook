@@ -35,6 +35,19 @@ namespace ADONotebook
         {
             var proxy = new JsonRpcProxy(executor);
 
+
+            Config.SetPostProcessHandler((JsonRequest request, JsonResponse response, object context) => {
+                    if (response.Error != null)
+                    {
+                        var innerException = (response.Error.data as Exception);
+                        var errorData = new Dictionary<string, string>();
+                        errorData["stacktrace"] = innerException.StackTrace;
+                        response.Error = new JsonRpcException(-32603, innerException.Message, errorData);
+                    }
+
+                    return null;
+                });
+
             var listener = new HttpListener();
             listener.Prefixes.Add(Endpoint);
 
