@@ -10,7 +10,7 @@ namespace ADONotebook
     {
         private static void PrintUsageAndDie()
         {
-            Console.Error.WriteLine("adonotebook.exe (-c|-s) (-f <provider> <connection-string> | -r <dll> <class> <connection-string>)");
+            Console.Error.WriteLine("adonotebook.exe (-f <provider> <connection-string> | -r <dll> <class> <connection-string>)");
             Environment.Exit(1);
         }
 
