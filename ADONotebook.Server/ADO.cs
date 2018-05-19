@@ -123,7 +123,10 @@ namespace ADONotebook
         /// </summary>
         public void Close()
         {
-            Connection.Close();
+            if (Connection != null)
+            {
+                Connection.Close();
+            }
         }
 
         /// <summary>
