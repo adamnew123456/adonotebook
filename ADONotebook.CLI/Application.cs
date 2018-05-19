@@ -201,21 +201,35 @@ namespace ADONotebook
                             else
                             {
                                 var page = new List<Dictionary<string, string>>();
+                                var pagePrinted = false;
                                 do
                                 {
                                     page = rpc.RetrievePage();
-                                    if (page.Count > 0 && !DisplayPage(resultColumns, page, true))
+
+                                    var canDisplay = page.Count > 0 || !pagePrinted;
+                                    if (canDisplay && !DisplayPage(resultColumns, page, true))
                                     {
                                         break;
                                     }
+
+                                    pagePrinted = true;
                                 } while (page.Count != 0);
                             }
 
-                            rpc.FinishQuery();
                         }
                         catch (RpcException error)
                         {
                             Console.Error.WriteLine("Received error from server: {0}", error);
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                rpc.FinishQuery();
+                            }
+                            catch (RpcException)
+                            {
+                            }
                         }
                         break;
                 }
