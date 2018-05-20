@@ -9,6 +9,10 @@ using Newtonsoft.Json.Linq;
 
 namespace ADONotebook
 {
+    /// <summary>
+    ///   Information returned from the server about a query's result
+    ///   set.
+    /// </summary>
     public class ReaderMetadata
     {
         [JsonProperty("columnnames")]
@@ -18,6 +22,9 @@ namespace ADONotebook
         public List<string> ColumnTypes;
     }
 
+    /// <summary>
+    ///   Information returned from the server about the database's tables;
+    /// </summary>
     public class TableMetadata
     {
         [JsonProperty("catalog")]
@@ -27,6 +34,9 @@ namespace ADONotebook
         public string Table;
     }
 
+    /// <summary>
+    ///   Information returned from the server about the database's columns;
+    /// </summary>
     public class ColumnMetadata
     {
         [JsonProperty("catalog")]
@@ -42,6 +52,9 @@ namespace ADONotebook
         public string DataType;
     }
 
+    /// <summary>
+    ///   An exception for any issues that happen when calling the server.
+    /// </summary>
     public class RpcException : Exception
     {
         public RpcException(string message, string stacktrace) : base(String.Format("{0}\n{1}", message, stacktrace))
@@ -49,6 +62,10 @@ namespace ADONotebook
         }
     }
 
+    /// <summary>
+    ///   Stubs for the RPC methods that internally call out to the server and
+    ///   handling JSON-RPC tasks like HTTP requests and error handling.
+    /// </summary>
     public class RpcWrapper
     {
         private Uri Endpoint;
@@ -58,42 +75,27 @@ namespace ADONotebook
             Endpoint = endpoint;
         }
 
+        /*
+         * I'm not sure if it's a property of Mono's WebClient or the .NET
+         * WebClient in general, but any issue retrieving the response that
+         * causes a WebException will close the response before we can
+         * examine it. That's a problem because the real error data occurs
+         * inside of the response body, as JSON-RPC errors.
+         *
+         * To combat that, we have to construct the request manually so that
+         * we control the lifetime of all of the streams involved and can ignore
+         * any WebExceptions.
+         */
+
         /// <summary>
-        ///   Executes a remote call, returning the "result" member if the
-        ///   call was successful, or throwing an RpcException otherwise.
+        ///   Sends an HTTP post to the current endpoint, passing along the
+        ///   body. Returns the consumed body, even if the server returned an
+        ///   error.
         /// </summary>
-        public JToken RemoteCall(string method, params object[] args)
+        private string SendWebRequest(string body)
         {
-            var request = new JObject();
-            request["id"] = 1;
-            request["jsonrpc"] = "2.0";
-            request["method"] = method;
+            var requestBytes = Encoding.UTF8.GetBytes(body);
 
-            var jsonArgs = new JArray();
-            foreach (var arg in args)
-            {
-                jsonArgs.Add(arg);
-            }
-
-            request["params"] = jsonArgs;
-
-            var client = new WebClient();
-            client.Headers.Remove("Content-Type");
-            client.Headers.Add("Content-Type", "application/json");
-
-            var requestBytes = Encoding.UTF8.GetBytes(request.ToString());
-
-            /*
-             * I'm not sure if it's a property of Mono's WebClient or the .NET
-             * WebClient in general, but any issue retrieving the response that
-             * causes a WebException will close the response before we can
-             * examine it. That's a problem because the real error data occurs
-             * inside of the response body, as JSON-RPC errors.
-             *
-             * To combat that, we have to construct the request manually so that
-             * we control the lifetime of all of the streams involved and can ignore
-             * any WebExceptions.
-             */
             var httpRequest = HttpWebRequest.Create(Endpoint) as HttpWebRequest;
             httpRequest.ContentType = "application/json";
             httpRequest.Accept = "application/json; application/json-rpc";
@@ -122,11 +124,34 @@ namespace ADONotebook
             }
 
             var responseReader = new StreamReader(httpResponse.GetResponseStream(), Encoding.UTF8);
-            var responseRaw = responseReader.ReadToEnd();
+            var response = responseReader.ReadToEnd();
 
             responseReader.Close();
             httpResponse.Close();
 
+            return response;
+        }
+
+        /// <summary>
+        ///   Executes a remote call, returning the "result" member if the
+        ///   call was successful, or throwing an RpcException otherwise.
+        /// </summary>
+        public JToken RemoteCall(string method, params object[] args)
+        {
+            var request = new JObject();
+            request["id"] = 1;
+            request["jsonrpc"] = "2.0";
+            request["method"] = method;
+
+            var jsonArgs = new JArray();
+            foreach (var arg in args)
+            {
+                jsonArgs.Add(arg);
+            }
+
+            request["params"] = jsonArgs;
+
+            var responseRaw = SendWebRequest(request.ToString());
             var response = JObject.Parse(responseRaw);
             if (response.ContainsKey("error"))
             {

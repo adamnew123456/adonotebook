@@ -4,6 +4,9 @@ using System.Text;
 
 namespace ADONotebook
 {
+    /// <summary>
+    ///   Tracks what the lexer was processing after the previous feeding.
+    /// </summary>
     public enum LexerState
     {
         NORMAL,
@@ -14,9 +17,17 @@ namespace ADONotebook
         ERROR
     }
 
+    /// <summary>
+    ///   A basic SQL lexer that understands the basics of SQL's commenting
+    ///   and quoting rules.
+    /// </summary>
     public class SqlLexer
     {
+        /// <summary>
+        ///   What the lexer was last processing.
+        /// </summary>
         public LexerState State { get; private set; }
+
         private int ParenDepth = 0;
 
         public SqlLexer()
@@ -24,6 +35,10 @@ namespace ADONotebook
             State = LexerState.NORMAL;
         }
 
+        /// <summary>
+        ///   Handles a single character from the input, or possibly more in
+        ///   certain double-quoting cases.
+        /// </summary>
         private void DispatchCharacter(MemoryStream memory, char character)
         {
             switch (character)
@@ -211,6 +226,10 @@ namespace ADONotebook
             }
         }
 
+        /// <summary>
+        ///   Consumes the given string, updating the lexer state based upon
+        ///   its contents.
+        /// </summary>
         public void Feed(string fragment)
         {
             var memory = new MemoryStream(Encoding.UTF8.GetBytes(fragment));

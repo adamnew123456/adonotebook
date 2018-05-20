@@ -4,8 +4,15 @@ using System.Text;
 
 namespace ADONotebook
 {
+    /// <summary>
+    ///   The main class.
+    /// </summary>
     public class Application
     {
+        /// <summary>
+        ///   Scans the data page to figure out how wide each column needs to
+        ///   be to tabulate all the data.
+        /// </summary>
         private static int[] ComputePrintingWidth(ReaderMetadata columns, List<Dictionary<string, string>> page)
         {
             var maxLengths = new int[columns.ColumnNames.Count];
@@ -31,6 +38,9 @@ namespace ADONotebook
             return maxLengths;
         }
 
+        /// <summary>
+        ///    Pretty-prints, in tabular form, a single page of database results.
+        /// </summary>
         private static bool DisplayPage(ReaderMetadata columns, List<Dictionary<string, string>> page, bool promptForContinuation)
         {
             var columnPadding = ComputePrintingWidth(columns, page);
@@ -78,6 +88,9 @@ namespace ADONotebook
             return input.KeyChar != 'q';
         }
 
+        /// <summary>
+        ///   Converts a table metadata listing into a printable page.
+        /// </summary>
         private static Tuple<ReaderMetadata, List<Dictionary<string, string>>> TableListingToPage(List<TableMetadata> tables)
         {
             var metadata = new ReaderMetadata
@@ -98,6 +111,9 @@ namespace ADONotebook
             return Tuple.Create(metadata, rows);
         }
 
+        /// <summary>
+        ///   Converts a column metadata listing into a printable page.
+        /// </summary>
         private static Tuple<ReaderMetadata, List<Dictionary<string, string>>> ColumnListingToPage(List<ColumnMetadata> columns)
         {
             var metadata = new ReaderMetadata
@@ -120,6 +136,44 @@ namespace ADONotebook
             return Tuple.Create(metadata, rows);
         }
 
+        /// <summary>
+        ///   Reads a single SQL query, or returns null if a parsing error was
+        ///   encountered.
+        /// </summary>
+        private static string ReadQuery()
+        {
+            var lexer = new SqlLexer();
+            var continuation = false;
+            var buffer = new StringBuilder();
+
+            do
+            {
+                if (continuation)
+                {
+                    Console.Write(">>>> ");
+                }
+                else
+                {
+                    Console.Write("sql> ");
+                    continuation = true;
+                }
+
+                var line = Console.ReadLine() + "\n";
+                buffer.Append(line);
+                lexer.Feed(line);
+            } while (lexer.State != LexerState.COMPLETE &&
+                     lexer.State != LexerState.ERROR);
+
+            if (lexer.State == LexerState.COMPLETE)
+            {
+                return buffer.ToString();
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         public static void Main(string[] Args)
         {
             RpcWrapper rpc = null;
@@ -136,132 +190,85 @@ namespace ADONotebook
             var done = false;
             while (!done)
             {
-                var lexer = new SqlLexer();
-                var continuation = false;
-                var buffer = new StringBuilder();
-
-                do
-                {
-                    if (continuation)
-                    {
-                        Console.Write(">>>> ");
-                    }
-                    else
-                    {
-                        Console.Write("sql> ");
-                        continuation = true;
-                    }
-
-                    var line = Console.ReadLine() + "\n";
-                    buffer.Append(line);
-                    lexer.Feed(line);
-                } while (lexer.State != LexerState.COMPLETE &&
-                         lexer.State != LexerState.ERROR);
-
-                if (lexer.State == LexerState.ERROR)
+                var sql = ReadQuery()?.Trim();
+                if (sql == null)
                 {
                     Console.Error.WriteLine("Could not parse SQL");
                     continue;
                 }
 
-                var sql = buffer.ToString().Trim();
-                switch (sql)
+                try
                 {
-                    case "quit;":
-                        try
-                        {
+                    switch (sql)
+                    {
+                        case "quit;":
                             rpc.Quit();
                             done = true;
-                        }
-                        catch (RpcException error)
-                        {
-                            Console.Error.WriteLine("Received error from server: {0}", error);
-                        }
-                        break;
+                            break;
 
-                    case "tables;":
-                        try
-                        {
+                        case "tables;":
                             var tables = rpc.RetrieveTables();
                             var tablePageInfo = TableListingToPage(tables);
                             DisplayPage(tablePageInfo.Item1, tablePageInfo.Item2, false);
-                        }
-                        catch (RpcException error)
-                        {
-                            Console.Error.WriteLine("Received error from server: {0}", error);
-                        }
-                        break;
+                            break;
 
-                    case "views;":
-                        try
-                        {
+                        case "views;":
                             var views = rpc.RetrieveViews();
                             var viewPageInfo = TableListingToPage(views);
                             DisplayPage(viewPageInfo.Item1, viewPageInfo.Item2, false);
-                        }
-                        catch (RpcException error)
-                        {
-                            Console.Error.WriteLine("Received error from server: {0}", error);
-                        }
-                        break;
+                            break;
 
-                    case "columns;":
-                        try
-                        {
+                        case "columns;":
                             var cols = rpc.RetrieveColumns();
                             var colsPageInfo = ColumnListingToPage(cols);
                             DisplayPage(colsPageInfo.Item1, colsPageInfo.Item2, false);
-                        }
-                        catch (RpcException error)
-                        {
-                            Console.Error.WriteLine("Received error from server: {0}", error);
-                        }
-                        break;
+                            break;
 
-                    default:
-                        try
-                        {
-                            rpc.ExecuteSql(sql);
-
-                            var resultColumns = rpc.RetrieveQueryColumns();
-                            if (resultColumns.ColumnNames.Count == 0)
-                            {
-                                Console.WriteLine("Records affected: {0}", rpc.RetrieveResultCount());
-                            }
-                            else
-                            {
-                                var page = new List<Dictionary<string, string>>();
-                                var pagePrinted = false;
-                                do
-                                {
-                                    page = rpc.RetrievePage();
-
-                                    var canDisplay = page.Count > 0 || !pagePrinted;
-                                    if (canDisplay && !DisplayPage(resultColumns, page, true))
-                                    {
-                                        break;
-                                    }
-
-                                    pagePrinted = true;
-                                } while (page.Count != 0);
-                            }
-
-                        }
-                        catch (RpcException error)
-                        {
-                            Console.Error.WriteLine("Received error from server: {0}", error);
-                        }
-                        finally
-                        {
+                        default:
                             try
                             {
-                                rpc.FinishQuery();
+                                rpc.ExecuteSql(sql);
+
+                                var resultColumns = rpc.RetrieveQueryColumns();
+                                if (resultColumns.ColumnNames.Count == 0)
+                                {
+                                    Console.WriteLine("Records affected: {0}", rpc.RetrieveResultCount());
+                                }
+                                else
+                                {
+                                    var page = new List<Dictionary<string, string>>();
+                                    var pagePrinted = false;
+                                    do
+                                    {
+                                        page = rpc.RetrievePage();
+
+                                        var canDisplay = page.Count > 0 || !pagePrinted;
+                                        if (canDisplay && !DisplayPage(resultColumns, page, true))
+                                        {
+                                            break;
+                                        }
+
+                                        pagePrinted = true;
+                                    } while (page.Count != 0);
+                                }
+
                             }
-                            catch (RpcException)
+                            finally
                             {
+                                try
+                                {
+                                    rpc.FinishQuery();
+                                }
+                                catch (RpcException)
+                                {
+                                }
                             }
-                        }
-                        break;
+                            break;
+                    }
+                }
+                catch (RpcException error)
+                {
+                    Console.Error.WriteLine("Received error from server: {0}", error);
                 }
             }
         }
