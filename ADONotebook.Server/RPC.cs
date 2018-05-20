@@ -11,6 +11,9 @@ using Newtonsoft.Json;
 
 namespace ADONotebook
 {
+    /// <summary>
+    ///   Routes requests from an HTTP server to the JSON-RPC processor.
+    /// </summary>
     public class JsonRpcServer
     {
         private string Endpoint;
@@ -20,6 +23,9 @@ namespace ADONotebook
             Endpoint = endpoint;
         }
 
+        /// <summary>
+        ///   A helper for writing a response string.
+        /// </summary>
         private void SetOutputContent(HttpListenerResponse response, string content)
         {
             var bytes = Encoding.UTF8.GetBytes(content);
@@ -122,6 +128,9 @@ namespace ADONotebook
         }
     }
 
+    /// <summary>
+    ///   Information about the columns in a result set.
+    /// </summary>
     class ReaderMetadata
     {
         [JsonProperty("columnnames")]
@@ -137,6 +146,9 @@ namespace ADONotebook
         }
     }
 
+    /// <summary>
+    ///   The actual implementation of the RPC methods.
+    /// </summary>
     class JsonRpcProxy : JsonRpcService
     {
         public bool Finished { get; private set; }

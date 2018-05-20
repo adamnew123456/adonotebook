@@ -10,13 +10,14 @@ namespace ADONotebook
     {
         private static void PrintUsageAndDie()
         {
-            Console.Error.WriteLine("adonotebook.exe (-f <provider> <connection-string> | -r <dll> <class> <connection-string>)");
+            Console.Error.WriteLine("adonotebook.exe (-p <port>) (-f <provider> <connection-string> | -r <dll> <class> <connection-string>)");
             Environment.Exit(1);
         }
 
-        private static ADOQueryExecutor ParseArguments(string[] Args)
+        private static Tuple<int, ADOQueryExecutor> ParseArguments(string[] Args)
         {
             ADOQueryExecutor executor = null;
+            int port = -1;
 
             try
             {
@@ -24,22 +25,29 @@ namespace ADONotebook
                 {
                     switch (Args[i])
                     {
-                        case "-f":
-                            if (executor != null)
+                        case "-p":
+                            if (port != -1) PrintUsageAndDie();
+                            try
+                            {
+                                port = int.Parse(Args[i + 1]);
+                                if (port < 1 || port > 65536) PrintUsageAndDie();
+                            }
+                            catch (FormatException)
                             {
                                 PrintUsageAndDie();
                             }
 
+                            i++;
+                            break;
+
+                        case "-f":
+                            if (executor != null) PrintUsageAndDie();
                             executor = new ADOProviderFactoryExecutor(Args[i + 1], Args[i + 2]);
                             i += 2;
                             break;
 
                         case "-r":
-                            if (executor != null)
-                            {
-                                PrintUsageAndDie();
-                            }
-
+                            if (executor != null) PrintUsageAndDie();
                             executor = new ADOReflectionExecutor(Args[i + 1], Args[i + 2], Args[i + 3]);
                             i += 3;
                             break;
@@ -51,16 +59,24 @@ namespace ADONotebook
                 return null;
             }
 
-            return executor;
+            if (port == -1)
+            {
+                port = 1995;
+            }
+
+            return Tuple.Create(port, executor);
         }
 
         public static void Main(string[] Args)
         {
-            var executor = ParseArguments(Args);
-            if (executor == null) PrintUsageAndDie();
+            var runConfiguration = ParseArguments(Args);
+            if (runConfiguration == null || runConfiguration.Item2 == null)
+            {
+                PrintUsageAndDie();
+            }
 
-            var server = new JsonRpcServer("http://localhost:1995/");
-            server.Run(executor);
+            var server = new JsonRpcServer("http://localhost:" + runConfiguration.Item1 + "/");
+            server.Run(runConfiguration.Item2);
         }
     }
 }
