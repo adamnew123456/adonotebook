@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
+using System.Text;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -79,7 +81,52 @@ namespace ADONotebook
             client.Headers.Remove("Content-Type");
             client.Headers.Add("Content-Type", "application/json");
 
-            var responseRaw = client.UploadString(Endpoint, "POST", request.ToString());
+            var requestBytes = Encoding.UTF8.GetBytes(request.ToString());
+
+            /*
+             * I'm not sure if it's a property of Mono's WebClient or the .NET
+             * WebClient in general, but any issue retrieving the response that
+             * causes a WebException will close the response before we can
+             * examine it. That's a problem because the real error data occurs
+             * inside of the response body, as JSON-RPC errors.
+             *
+             * To combat that, we have to construct the request manually so that
+             * we control the lifetime of all of the streams involved and can ignore
+             * any WebExceptions.
+             */
+            var httpRequest = HttpWebRequest.Create(Endpoint) as HttpWebRequest;
+            httpRequest.ContentType = "application/json";
+            httpRequest.Accept = "application/json; application/json-rpc";
+            httpRequest.ContentLength = requestBytes.Length;
+            httpRequest.Method = "POST";
+
+            var requestStream = httpRequest.GetRequestStream();
+            requestStream.Write(requestBytes, 0, requestBytes.Length);
+            requestStream.Close();
+
+            HttpWebResponse httpResponse;
+            try
+            {
+                httpResponse = httpRequest.GetResponse() as HttpWebResponse;
+            }
+            catch (WebException error)
+            {
+                httpResponse = error.Response as HttpWebResponse;
+            }
+
+            if (httpResponse.ContentType != "application/json" &&
+                httpResponse.ContentType != "application/json-rpc")
+            {
+                httpResponse.Close();
+                throw new RpcException("Response received from server was not JSON", "");
+            }
+
+            var responseReader = new StreamReader(httpResponse.GetResponseStream(), Encoding.UTF8);
+            var responseRaw = responseReader.ReadToEnd();
+
+            responseReader.Close();
+            httpResponse.Close();
+
             var response = JObject.Parse(responseRaw);
             if (response.ContainsKey("error"))
             {

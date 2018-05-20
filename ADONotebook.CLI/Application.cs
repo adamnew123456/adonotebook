@@ -23,7 +23,8 @@ namespace ADONotebook
             {
                 for (var i = 0; i < columns.ColumnNames.Count; i++)
                 {
-                    maxLengths[i] = Math.Max(maxLengths[i], row[columns.ColumnNames[i]].Length);
+                    var entry = row[columns.ColumnNames[i]] ?? "<null>";
+                    maxLengths[i] = Math.Max(maxLengths[i], entry.Length);
                 }
             }
 
@@ -59,7 +60,8 @@ namespace ADONotebook
                 for (var i = 0; i < columns.ColumnNames.Count; i++)
                 {
                     var column = columns.ColumnNames[i];
-                    Console.Write(row[column].PadRight(columnPadding[i]));
+                    var entry = row[column] ?? "<null>";
+                    Console.Write(entry.PadRight(columnPadding[i]));
                     Console.Write(" ");
                 }
                 Console.WriteLine();
