@@ -36,6 +36,17 @@ namespace ADONotebook
         }
 
         /// <summary>
+        ///   Add headers to allow the RPC to be used by JS.
+        /// </summary>
+        private void AddCORSHeaders(HttpListenerContext context)
+        {
+            context.Response.AddHeader("Access-Control-Allow-Origin", "*");
+            context.Response.AddHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+            context.Response.AddHeader("Access-Control-Allow-Headers", "Content-Type");
+            context.Response.AddHeader("Access-Control-Max-Age", "86400");
+        }
+
+        /// <summary>
         ///   Runs the RPC server, until it receives a call of the "quit" method.
         /// </summary>
         public void Run(ADOQueryExecutor executor)
@@ -68,6 +79,17 @@ namespace ADONotebook
                 while (!proxy.Finished)
                 {
                     var context = listener.GetContext();
+                    AddCORSHeaders(context);
+
+                    if (context.Request.HttpMethod == "OPTIONS")
+                    {
+                        context.Response.StatusCode = 200;
+                        context.Response.StatusDescription = "OK";
+                        context.Response.ContentLength64 = 0;
+                        context.Response.OutputStream.Close();
+                        continue;
+                    }
+
                     context.Response.ContentType = "application/json";
 
                     if (context.Request.HttpMethod != "POST")
