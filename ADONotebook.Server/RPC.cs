@@ -199,9 +199,9 @@ namespace ADONotebook
         }
 
         [JsonRpcMethod]
-        private List<ColumnMetadata> columns()
+        private List<ColumnMetadata> columns(string catalog, string schema, string table)
         {
-            var results = Executor.Columns();
+            var results = Executor.Columns(catalog, schema, table);
             return results;
         }
 

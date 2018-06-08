@@ -14,12 +14,16 @@ namespace ADONotebook
         [JsonProperty("catalog")]
         public string Catalog { get; private set; }
 
+        [JsonProperty("schema")]
+        public string Schema { get; private set; }
+
         [JsonProperty("table")]
         public string Table { get; private set; }
 
-        public TableMetadata(string catalog, string table)
+        public TableMetadata(string catalog, string schema, string table)
         {
             Catalog = catalog;
+            Schema = schema;
             Table = table;
         }
     }
@@ -28,6 +32,9 @@ namespace ADONotebook
     {
         [JsonProperty("catalog")]
         public string Catalog { get; private set; }
+
+        [JsonProperty("schema")]
+        public string Schema { get; private set; }
 
         [JsonProperty("table")]
         public string Table { get; private set; }
@@ -38,9 +45,10 @@ namespace ADONotebook
         [JsonProperty("datatype")]
         public string DataType { get; private set; }
 
-        public ColumnMetadata(string catalog, string table, string column, string datatype)
+        public ColumnMetadata(string catalog, string schema, string table, string column, string datatype)
         {
             Catalog = catalog;
+            Schema = schema;
             Table = table;
             Column = column;
             DataType = datatype;
@@ -167,6 +175,7 @@ namespace ADONotebook
             foreach (DataRow row in dataTable.Rows)
             {
                 var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
+                                              row["TABLE_SCHEMA"] as string,
                                               row["TABLE_NAME"] as string);
                 tables.Add(entry);
             }
@@ -185,6 +194,7 @@ namespace ADONotebook
             foreach (DataRow row in dataTable.Rows)
             {
                 var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
+                                              row["TABLE_SCHEMA"] as string,
                                               row["TABLE_NAME"] as string);
                 tables.Add(entry);
             }
@@ -194,18 +204,19 @@ namespace ADONotebook
         /// <summary>
         ///   Gets a list of columns from the data source.
         /// </summary>
-        public List<ColumnMetadata> Columns()
+        public List<ColumnMetadata> Columns(string catalog, string schema, string table)
         {
             var commonConnection = Connection as DbConnection;
-            var dataTable = commonConnection.GetSchema("Columns");
+            var dataTable = commonConnection.GetSchema("Columns", new string[] {catalog, schema, table});
 
             var columns = new List<ColumnMetadata>();
             foreach (DataRow row in dataTable.Rows)
             {
                 var entry = new ColumnMetadata(row["TABLE_CATALOG"] as string,
-                                                row["TABLE_NAME"] as string,
-                                                row["COLUMN_NAME"] as string,
-                                                row["DATA_TYPE"] as string);
+                                               row["TABLE_SCHEMA"] as string,
+                                               row["TABLE_NAME"] as string,
+                                               row["COLUMN_NAME"] as string,
+                                               row["DATA_TYPE"] as string);
                 columns.Add(entry);
             }
             return columns;

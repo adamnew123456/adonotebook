@@ -95,8 +95,8 @@ namespace ADONotebook
         {
             var metadata = new ReaderMetadata
             {
-                ColumnNames = new List<string> { "Catalog", "Table" },
-                ColumnTypes = new List<string> { "System.String", "System.String" }
+                ColumnNames = new List<string> { "Catalog", "Schema", "Table" },
+                ColumnTypes = new List<string> { "System.String", "System.String", "System.String" }
             };
 
             var rows = new List<Dictionary<string, string>>();
@@ -104,6 +104,7 @@ namespace ADONotebook
             {
                 var row = new Dictionary<string, string>();
                 row["Catalog"] = table.Catalog;
+                row["Schema"] = table.Schema;
                 row["Table"] = table.Table;
                 rows.Add(row);
             }
@@ -118,8 +119,8 @@ namespace ADONotebook
         {
             var metadata = new ReaderMetadata
             {
-                ColumnNames = new List<string> { "Catalog", "Table", "Column", "DataType" },
-                ColumnTypes = new List<string> { "System.String", "System.String", "System.String", "System.String" }
+                ColumnNames = new List<string> { "Catalog", "Schema", "Table", "Column", "DataType" },
+                ColumnTypes = new List<string> { "System.String", "System.String", "System.String", "System.String", "System.String" }
             };
 
             var rows = new List<Dictionary<string, string>>();
@@ -127,6 +128,7 @@ namespace ADONotebook
             {
                 var row = new Dictionary<string, string>();
                 row["Catalog"] = column.Catalog;
+                row["Schema"] = column.Schema;
                 row["Table"] = column.Table;
                 row["Column"] = column.Column;
                 row["DataType"] = column.DataType;
@@ -219,9 +221,42 @@ namespace ADONotebook
                             break;
 
                         case "columns;":
-                            var cols = rpc.RetrieveColumns();
-                            var colsPageInfo = ColumnListingToPage(cols);
-                            DisplayPage(colsPageInfo.Item1, colsPageInfo.Item2, false);
+                            Console.Write("Enter the table name (catalog and schema are optional): ");
+                            Console.Out.Flush();
+
+                            var dottedName = Console.ReadLine();
+                            var dottedParts = SqlLexer.ParseDottedName(dottedName);
+
+                            string catalog = null,
+                                schema = null,
+                                table = null;
+
+                            switch (dottedParts.Count)
+                            {
+                                case 1:
+                                    table = dottedParts[0];
+                                    break;
+                                case 2:
+                                    schema = dottedParts[0];
+                                    table = dottedParts[1];
+                                    break;
+                                case 3:
+                                    catalog = dottedParts[0];
+                                    schema = dottedParts[1];
+                                    table = dottedParts[2];
+                                    break;
+                            }
+
+                            if (table == null)
+                            {
+                                Console.WriteLine("Invalid table name provided");
+                            }
+                            else
+                            {
+                                var cols = rpc.RetrieveColumns(catalog, schema, table);
+                                var colsPageInfo = ColumnListingToPage(cols);
+                                DisplayPage(colsPageInfo.Item1, colsPageInfo.Item2, false);
+                            }
                             break;
 
                         default:

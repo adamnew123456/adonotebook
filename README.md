@@ -104,11 +104,13 @@ class ReaderMetadata {
 
 class TableMetadata {
     String catalog;
+    String schema;
     String table;
 }
 
 class ColumnMetadata {
     String catalog;
+    String schema;
     String table;
     String column;
     String datatype;
@@ -138,8 +140,8 @@ run, or that the method must not have an active query in order to run.
   within the database.
 - `List<TableMetadata> views()` This returns all the views currently visible 
   within the database.
-- `List<ColumnMetadata> columns()` This returns all the columns on all 
-  tables/views that are currently visible in the database.
+- `List<ColumnMetadata> columns(String catalog, String schema, String table)` 
+  This returns all the columns on the given table or view.
 - `@NoActive boolean execute(String sql)` This executes the given query, and
   stores the result set for future use, returning `true` (in case of any 
   failures, the result should be a normal JSON-RPC error). This also puts the 

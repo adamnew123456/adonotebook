@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -245,6 +246,105 @@ namespace ADONotebook
                 var character = (char)rawCharacter;
                 DispatchCharacter(memory, character);
             }
+        }
+
+        /// <summary>
+        ///   Parses a dotted name down into its components, respecting
+        ///   the various kinds of quotes.
+        /// </summary>
+        public static List<string> ParseDottedName(string name)
+        {
+            int UNQUOTED = 0,
+                ANSI_QUOTE = 1,
+                MYSQL_QUOTE = 2,
+                MSSQL_QUOTE = 3;
+
+            var quote_state = UNQUOTED;
+            var component = new StringBuilder();
+            var components = new List<string>();
+
+            for (int i = 0; i < name.Length; i++)
+            {
+                var current = name[i];
+                var hasNext = (i + 1) < name.Length;
+
+                if (quote_state == ANSI_QUOTE)
+                {
+                    if (current == '"' && hasNext && name[i + 1] == '"')
+                    {
+                        component.Append('"');
+                        i++;
+                    }
+                    else if (current == '"')
+                    {
+                        quote_state = UNQUOTED;
+                    }
+                    else
+                    {
+                        component.Append(current);
+                    }
+                    continue;
+                }
+
+                if (quote_state == MYSQL_QUOTE)
+                {
+                    if (current == '`' && hasNext && name[i + 1] == '`')
+                    {
+                        component.Append('`');
+                        i++;
+                    }
+                    else if (current == '`')
+                    {
+                        quote_state = UNQUOTED;
+                    }
+                    else
+                    {
+                        component.Append(current);
+                    }
+                    continue;
+                }
+
+                if (quote_state == MSSQL_QUOTE)
+                {
+                    if (current == ']' && hasNext && name[i + 1] == ']')
+                    {
+                        component.Append(']');
+                        i++;
+                    }
+                    else if (current == ']')
+                    {
+                        quote_state = UNQUOTED;
+                    }
+                    else
+                    {
+                        component.Append(current);
+                    }
+                    continue;
+                }
+
+                switch (current)
+                {
+                    case '.':
+                        components.Add(component.ToString());
+                        component.Clear();
+                        break;
+                    case '"':
+                        quote_state = ANSI_QUOTE;
+                        break;
+                    case '`':
+                        quote_state = MYSQL_QUOTE;
+                        break;
+                    case '[':
+                        quote_state = MSSQL_QUOTE;
+                        break;
+                    default:
+                        component.Append(current);
+                        break;
+                }
+            }
+
+            components.Add(component.ToString());
+            return components;
         }
     }
 }

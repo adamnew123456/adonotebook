@@ -30,6 +30,9 @@ namespace ADONotebook
         [JsonProperty("catalog")]
         public string Catalog;
 
+        [JsonProperty("schema")]
+        public string Schema;
+
         [JsonProperty("table")]
         public string Table;
     }
@@ -41,6 +44,9 @@ namespace ADONotebook
     {
         [JsonProperty("catalog")]
         public string Catalog;
+
+        [JsonProperty("schema")]
+        public string Schema;
 
         [JsonProperty("table")]
         public string Table;
@@ -183,9 +189,9 @@ namespace ADONotebook
         /// <summary>
         ///   Retrieves the connection's columns from the server.
         /// </summary>
-        public List<ColumnMetadata> RetrieveColumns()
+        public List<ColumnMetadata> RetrieveColumns(string catalog, string schema, string table)
         {
-            return RemoteCall("columns")
+            return RemoteCall("columns", catalog, schema, table)
                 .ToObject<List<ColumnMetadata>>();
         }
 
