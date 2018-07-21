@@ -29,8 +29,8 @@ is agnostic to the database API. ODBC support is also planned.
 
 1. Navigate to `ADONotebook.Server\bin\Debug`.
 2. Depending upon your platform, run the command 
-   `Server.exe -f <Provider> <Connection-String>`. The provider option will 
-   need to be an entry in your machine.config, something like 
+   `Server.exe -f <Provider> -P <Property> <Value> -P <Property> <Value>...`. 
+   The provider option will need to be an entry in your machine.config, something like 
    `System.Data.SqlClient` or `Mono.Data.Sqlite` (you can also use a provider 
    from a DLL directly, but this involves knowing the provider factory class name).
 3. This will start up the ADO.NET provider server, and you should see a message like **Awaiting connections on http://localhost:1995/**.
@@ -58,6 +58,18 @@ sql> select * from Customer
 ...
 sql> quit;
 ```
+
+# Server Options 
+
+- `-p port` Sets the port that the server listens on (default: 1995)
+- `-f provider` Uses the given name to look up a provider within `DbProviderFactories`
+- `-r dll class` Loads the assembly file and uses the class name, which should extend `DbProviderFactory`
+- `-s` Enables SSL, using the certificate configured via `httpcfg`
+- `-P property value` Sets connection properties on the provider's connection string builder. This can be repeated for any number of properties.
+
+# Client Options 
+
+- `-s` Disables SSL certificate verification. Must appear after the URL.
 
 # Protocol
 ## JSON-RPC and HTTP
