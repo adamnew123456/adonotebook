@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 
 namespace ADONotebook
@@ -185,8 +186,14 @@ namespace ADONotebook
             }
             catch (IndexOutOfRangeException)
             {
-                Console.Error.WriteLine("adonotebook.exe <server-url>");
+                Console.Error.WriteLine("adonotebook.exe <server-url> [-s]");
                 Environment.Exit(1);
+            }
+
+            if (Args.Length > 1 && Args[1] == "-s")
+            {
+                ServicePointManager.ServerCertificateValidationCallback +=
+                   (sender, cert, chain, errors) => true;
             }
 
             var done = false;

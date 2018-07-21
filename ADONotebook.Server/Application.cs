@@ -12,11 +12,12 @@ namespace ADONotebook
         {
             public int Port;
             public ADOQueryExecutor Executor;
+            public bool Ssl;
         }
 
         private static void PrintUsageAndDie()
         {
-            Console.Error.WriteLine("adonotebook.exe (-p <port>) (-f <provider> | -r <dll> <class>) (-P <property> <value>)*");
+            Console.Error.WriteLine("adonotebook.exe (-p <port>) (-f <provider> | -r <dll> <class>) [-s] (-P <property> <value>)*");
             Environment.Exit(1);
         }
 
@@ -24,6 +25,7 @@ namespace ADONotebook
         {
             var config = new RunConfig();
             config.Port = -1;
+            config.Ssl = false;
             var properties = new Dictionary<string, string>();
 
             try
@@ -45,6 +47,10 @@ namespace ADONotebook
                             }
 
                             i++;
+                            break;
+
+                        case "-s":
+                            config.Ssl = true;
                             break;
 
                         case "-f":
@@ -87,7 +93,14 @@ namespace ADONotebook
         public static void Main(string[] Args)
         {
             var runConfiguration = ParseArguments(Args);
-            var server = new JsonRpcServer("http://localhost:" + runConfiguration.Port + "/");
+            var url = "http";
+            if (runConfiguration.Ssl)
+            {
+                url += "s";
+            }
+            url += "://localhost:" + runConfiguration.Port + "/";
+
+            var server = new JsonRpcServer(url);
             server.Run(runConfiguration.Executor);
         }
     }
