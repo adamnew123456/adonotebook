@@ -8,16 +8,23 @@ namespace ADONotebook
 {
     public class Application
     {
+        struct RunConfig
+        {
+            public int Port;
+            public ADOQueryExecutor Executor;
+        }
+
         private static void PrintUsageAndDie()
         {
-            Console.Error.WriteLine("adonotebook.exe (-p <port>) (-f <provider> <connection-string> | -r <dll> <class> <connection-string>)");
+            Console.Error.WriteLine("adonotebook.exe (-p <port>) (-f <provider> | -r <dll> <class>) (-P <property> <value>)*");
             Environment.Exit(1);
         }
 
-        private static Tuple<int, ADOQueryExecutor> ParseArguments(string[] Args)
+        private static RunConfig ParseArguments(string[] Args)
         {
-            ADOQueryExecutor executor = null;
-            int port = -1;
+            var config = new RunConfig();
+            config.Port = -1;
+            var properties = new Dictionary<string, string>();
 
             try
             {
@@ -26,11 +33,11 @@ namespace ADONotebook
                     switch (Args[i])
                     {
                         case "-p":
-                            if (port != -1) PrintUsageAndDie();
+                            if (config.Port != -1) PrintUsageAndDie();
                             try
                             {
-                                port = int.Parse(Args[i + 1]);
-                                if (port < 1 || port > 65536) PrintUsageAndDie();
+                                config.Port = int.Parse(Args[i + 1]);
+                                if (config.Port < 1 || config.Port > 65536) PrintUsageAndDie();
                             }
                             catch (FormatException)
                             {
@@ -41,42 +48,47 @@ namespace ADONotebook
                             break;
 
                         case "-f":
-                            if (executor != null) PrintUsageAndDie();
-                            executor = new ADOProviderFactoryExecutor(Args[i + 1], Args[i + 2]);
-                            i += 2;
+                            if (config.Executor != null) PrintUsageAndDie();
+                            config.Executor = new ADOProviderFactoryExecutor(Args[i + 1], properties);
+                            i++;
                             break;
 
                         case "-r":
-                            if (executor != null) PrintUsageAndDie();
-                            executor = new ADOReflectionExecutor(Args[i + 1], Args[i + 2], Args[i + 3]);
-                            i += 3;
+                            if (config.Executor != null) PrintUsageAndDie();
+                            config.Executor = new ADOReflectionExecutor(Args[i + 1], Args[i + 2], properties);
+                            i += 2;
+                            break;
+
+                        case "-P":
+                            properties[Args[i + 1]] = Args[i + 2];
+                            i += 2;
                             break;
                     }
                 }
             }
             catch (IndexOutOfRangeException)
             {
-                return null;
+                PrintUsageAndDie();
             }
 
-            if (port == -1)
+            if (config.Port == -1)
             {
-                port = 1995;
+                config.Port = 1995;
             }
 
-            return Tuple.Create(port, executor);
+            if (config.Executor == null)
+            {
+                PrintUsageAndDie();
+            }
+
+            return config;
         }
 
         public static void Main(string[] Args)
         {
             var runConfiguration = ParseArguments(Args);
-            if (runConfiguration == null || runConfiguration.Item2 == null)
-            {
-                PrintUsageAndDie();
-            }
-
-            var server = new JsonRpcServer("http://localhost:" + runConfiguration.Item1 + "/");
-            server.Run(runConfiguration.Item2);
+            var server = new JsonRpcServer("http://localhost:" + runConfiguration.Port + "/");
+            server.Run(runConfiguration.Executor);
         }
     }
 }

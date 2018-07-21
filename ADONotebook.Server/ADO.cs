@@ -221,20 +221,30 @@ namespace ADONotebook
             }
             return columns;
         }
+
+        protected void LoadConnectionProperties(Dictionary<string, string> properties,
+                                                DbConnectionStringBuilder builder)
+        {
+           foreach (string property in properties.Keys)
+           {
+              builder[property] = properties[property];
+           }
+        }
     }
 
     /// <summary>
     ///   An executor based upon ADO.NET providers, that get access to a
     ///   provider using DbProviderFactories.
     /// </summary>
-    public class ADOProviderFactoryExecutor : ADOQueryExecutor {
+    public class ADOProviderFactoryExecutor : ADOQueryExecutor
+    {
         private string ProviderInvariant;
-        private string ConnectionString;
+        private Dictionary<string, string> ConnectionProperties;
 
-        public ADOProviderFactoryExecutor(string provider, string connectionString)
+        public ADOProviderFactoryExecutor(string provider, Dictionary<string, string> properties)
         {
             ProviderInvariant = provider;
-            ConnectionString = connectionString;
+            ConnectionProperties = properties;
         }
 
         /// <summary>
@@ -244,7 +254,9 @@ namespace ADONotebook
         {
             var factory = DbProviderFactories.GetFactory(ProviderInvariant);
             Connection = factory.CreateConnection();
-            Connection.ConnectionString = ConnectionString;
+            var builder = factory.CreateConnectionStringBuilder();
+            LoadConnectionProperties(ConnectionProperties, builder);
+            Connection.ConnectionString = builder.ToString();
             Connection.Open();
         }
     }
@@ -253,16 +265,17 @@ namespace ADONotebook
     ///   An executor based upon ADO.NET providers, that get access to a
     ///   provider using reflection.
     /// </summary>
-    public class ADOReflectionExecutor : ADOQueryExecutor {
+    public class ADOReflectionExecutor : ADOQueryExecutor
+    {
         private string AssemblyFile;
         private string FactoryClass;
-        private string ConnectionString;
+        private Dictionary<string, string> ConnectionProperties;
 
-        public ADOReflectionExecutor(string assembly, string factoryClass, string connectionString)
+       public ADOReflectionExecutor(string assembly, string factoryClass, Dictionary<string, string> properties)
         {
             AssemblyFile = assembly;
             FactoryClass = factoryClass;
-            ConnectionString = connectionString;
+            ConnectionProperties = properties;
         }
 
         /// <summary>
@@ -274,7 +287,9 @@ namespace ADONotebook
             var factoryClass = providerAssembly.GetType(FactoryClass);
             var factoryInstance = Activator.CreateInstance(factoryClass) as DbProviderFactory;
             Connection = factoryInstance.CreateConnection();
-            Connection.ConnectionString = ConnectionString;
+            var builder = factoryInstance.CreateConnectionStringBuilder();
+            LoadConnectionProperties(ConnectionProperties, builder);
+            Connection.ConnectionString = builder.ToString();
             Connection.Open();
         }
     }
