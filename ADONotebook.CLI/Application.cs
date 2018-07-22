@@ -177,23 +177,69 @@ namespace ADONotebook
             }
         }
 
-        public static void Main(string[] Args)
+        struct RunConfig
         {
-            RpcWrapper rpc = null;
+            public string Url;
+            public bool VerifyCertificate;
+            public bool Paginate;
+        }
+
+        private static void PrintUsageAndDie()
+        {
+            Console.Error.WriteLine("CLI.exe -u <server-url> [-s] [-p]");
+            Environment.Exit(1);
+        }
+
+        private static RunConfig ParseArguments(string[] Args)
+        {
+            var config = new RunConfig();
+            config.VerifyCertificate = true;
+            config.Paginate = true;
+
             try
             {
-                rpc = new RpcWrapper(new Uri(Args[0]));
+                for (var i = 0; i < Args.Length; i++)
+                {
+                    switch (Args[i])
+                    {
+                        case "-u":
+                            if (config.Url != null) PrintUsageAndDie();
+                            config.Url = Args[i + 1];
+                            i++;
+                            break;
+
+                        case "-s":
+                            config.VerifyCertificate = false;
+                            break;
+
+                        case "-p":
+                            config.Paginate = false;
+                            break;
+                    }
+                }
             }
             catch (IndexOutOfRangeException)
             {
-                Console.Error.WriteLine("adonotebook.exe <server-url> [-s]");
-                Environment.Exit(1);
+                PrintUsageAndDie();
             }
 
-            if (Args.Length > 1 && Args[1] == "-s")
+            if (config.Url == null)
             {
-                ServicePointManager.ServerCertificateValidationCallback +=
-                   (sender, cert, chain, errors) => true;
+                PrintUsageAndDie();
+            }
+
+            return config;
+        }
+
+        public static void Main(string[] Args)
+        {
+            var config = ParseArguments(Args);
+
+            RpcWrapper rpc = new RpcWrapper(new Uri(config.Url));
+            if (!config.VerifyCertificate)
+            {
+               ServicePointManager.ServerCertificateValidationCallback +=
+                  (sender, cert, chain, errors) => true;
             }
 
             var done = false;
@@ -276,7 +322,7 @@ namespace ADONotebook
                                 {
                                     Console.WriteLine("Records affected: {0}", rpc.RetrieveResultCount());
                                 }
-                                else
+                                else if (config.Paginate)
                                 {
                                     var page = new List<Dictionary<string, string>>();
                                     var pagePrinted = false;
@@ -293,7 +339,18 @@ namespace ADONotebook
                                         pagePrinted = true;
                                     } while (page.Count != 0);
                                 }
+                                else
+                                {
+                                    var results = new List<Dictionary<string, string>>();
+                                    var page = new List<Dictionary<string, string>>();
+                                    do
+                                    {
+                                        page = rpc.RetrievePage();
+                                        results.AddRange(page);
+                                    } while (page.Count != 0);
 
+                                    DisplayPage(resultColumns, results, false);
+                                }
                             }
                             finally
                             {

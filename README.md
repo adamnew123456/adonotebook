@@ -34,7 +34,7 @@ is agnostic to the database API. ODBC support is also planned.
    `System.Data.SqlClient` or `Mono.Data.Sqlite` (you can also use a provider 
    from a DLL directly, but this involves knowing the provider factory class name).
 3. This will start up the ADO.NET provider server, and you should see a message like **Awaiting connections on http://localhost:1995/**.
-4. Navigate to `ADONotebook.CLI\bin\Debug` and run `Client.exe http://localhost:1995/`.
+4. Navigate to `ADONotebook.CLI\bin\Debug` and run `CLI.exe -u http://localhost:1995/`.
 
 From the command line, you can use these commands:
 
@@ -69,7 +69,9 @@ sql> quit;
 
 # Client Options 
 
-- `-s` Disables SSL certificate verification. Must appear after the URL.
+- `-u server-url` Sets the server to connect to
+- `-p` Disables pagination
+- `-s` Disables SSL certificate verification
 
 # Protocol
 ## JSON-RPC and HTTP
@@ -93,10 +95,10 @@ difficult/sensitive to return, but it's encouraged for debugging purposes.
 
 ```json
 {
-    "code": <an integer, see the JSON-RPC spec>,
-    "message": <a string, containing a description of the error>,
+    "code": "<an integer, see the JSON-RPC spec>",
+    "message": "<a string, containing a description of the error>",
     "data": {
-        "stacktrace": <a string, containing the call stack of where the process failed>
+        "stacktrace": "<a string, containing the call stack of where the process failed>"
     }
 }
 ```

@@ -17,7 +17,7 @@ namespace ADONotebook
 
         private static void PrintUsageAndDie()
         {
-            Console.Error.WriteLine("adonotebook.exe (-p <port>) (-f <provider> | -r <dll> <class>) [-s] (-P <property> <value>)*");
+            Console.Error.WriteLine("Server.exe (-p <port>) (-f <provider> | -r <dll> <class>) [-s] (-P <property> <value>)*");
             Environment.Exit(1);
         }
 
