@@ -172,7 +172,7 @@ namespace ADONotebook
                     {
                         State = LexerState.NORMAL;
                     }
-                    else
+                    else if (State == LexerState.NORMAL)
                     {
                         State = LexerState.ERROR;
                     }
