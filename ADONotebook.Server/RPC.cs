@@ -90,15 +90,11 @@ namespace ADONotebook
                         continue;
                     }
 
-                    context.Response.ContentType = "application/json";
-
                     if (context.Request.HttpMethod != "POST")
                     {
                         context.Response.StatusCode = 405;
                         context.Response.StatusDescription = "Illegal Method";
-
-                        var errorResponse = "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32000, \"message\": \"Only the POST method is allowed\"}, \"id\": null}";
-                        SetOutputContent(context.Response, errorResponse);
+                        context.Response.OutputStream.Close();
                         continue;
                     }
 
@@ -106,19 +102,19 @@ namespace ADONotebook
                     {
                         context.Response.StatusCode = 404;
                         context.Response.StatusDescription = "Not Found";
-
-                        var errorResponse = "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32001, \"message\": \"Only the path / is allowed\"}, \"id\": null}";
-                        SetOutputContent(context.Response, errorResponse);
+                        context.Response.OutputStream.Close();
                         continue;
                     }
 
                     if (context.Request.ContentType != "application/json")
                     {
-                        var errorResponse = "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32700, \"message\": \"Parse error\"}, \"id\": null}";
-                        SetOutputContent(context.Response, errorResponse);
-                        continue;
+                       context.Response.StatusCode = 400;
+                       context.Response.StatusDescription = "Illegal Content Type";
+                       context.Response.OutputStream.Close();
+                       continue;
                     }
 
+                    context.Response.ContentType = "application/json";
                     var inputBuffer = new byte[context.Request.ContentLength64];
                     var offset = 0L;
 
@@ -155,16 +151,16 @@ namespace ADONotebook
     /// </summary>
     class ReaderMetadata
     {
-        [JsonProperty("columnnames")]
-        public List<string> ColumnNames;
+        [JsonProperty("column")]
+        public string Column;
 
-        [JsonProperty("columntypes")]
-        public List<string> ColumnTypes;
+        [JsonProperty("datatype")]
+        public string DataType;
 
-        public ReaderMetadata()
+        public ReaderMetadata(string column, string datatype)
         {
-            ColumnNames = new List<string>();
-            ColumnTypes = new List<string>();
+            Column = column;
+            DataType = datatype;
         }
     }
 
@@ -201,6 +197,9 @@ namespace ADONotebook
         [JsonRpcMethod]
         private List<ColumnMetadata> columns(string catalog, string schema, string table)
         {
+            if (catalog == "") catalog = null;
+            if (schema == "") schema = null;
+            if (table == "") table = null;
             var results = Executor.Columns(catalog, schema, table);
             return results;
         }
@@ -226,15 +225,14 @@ namespace ADONotebook
         }
 
         [JsonRpcMethod]
-        private ReaderMetadata metadata()
+        private List<ReaderMetadata> metadata()
         {
             CheckPaginator();
-            var metadata = new ReaderMetadata();
+            var metadata = new List<ReaderMetadata>();
 
             foreach (var column in Paginator.Columns)
             {
-                metadata.ColumnNames.Add(column.ColumnName);
-                metadata.ColumnTypes.Add(column.DataType.ToString());
+                metadata.Add(new ReaderMetadata(column.ColumnName, column.DataType.ToString()));
             }
 
             return metadata;
@@ -253,9 +251,13 @@ namespace ADONotebook
         }
 
         [JsonRpcMethod]
-        private List<Dictionary<string, string>> page()
+        private List<Dictionary<string, string>> page(int size)
         {
             CheckPaginator();
+            if (size <= 0) {
+                throw new InvalidOperationException("Page size must be a positive integer");
+            }
+
             var outputRows = new List<Dictionary<string, string>>();
             var page = Paginator.NextPage();
 

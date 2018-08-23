@@ -174,9 +174,12 @@ namespace ADONotebook
             var tables = new List<TableMetadata>();
             foreach (DataRow row in dataTable.Rows)
             {
-                var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
-                                              row["TABLE_SCHEMA"] as string,
-                                              row["TABLE_NAME"] as string);
+                var tableCatalog = row["TABLE_CATALOG"] as string;
+                var tableSchema = row["TABLE_SCHEMA"] as string;
+                if (tableCatalog == null) tableCatalog = "";
+                if (tableSchema  == null) tableSchema = "";
+
+                var entry = new TableMetadata(tableCatalog, tableSchema, row["TABLE_NAME"] as string);
                 tables.Add(entry);
             }
             return tables;
@@ -193,9 +196,12 @@ namespace ADONotebook
             var tables = new List<TableMetadata>();
             foreach (DataRow row in dataTable.Rows)
             {
-                var entry = new TableMetadata(row["TABLE_CATALOG"] as string,
-                                              row["TABLE_SCHEMA"] as string,
-                                              row["TABLE_NAME"] as string);
+                var viewCatalog = row["TABLE_CATALOG"] as string;
+                var viewSchema = row["TABLE_SCHEMA"] as string;
+                if (viewCatalog == null) viewCatalog = "";
+                if (viewSchema  == null) viewSchema = "";
+
+                var entry = new TableMetadata(viewCatalog, viewSchema, row["TABLE_NAME"] as string);
                 tables.Add(entry);
             }
             return tables;
@@ -212,8 +218,13 @@ namespace ADONotebook
             var columns = new List<ColumnMetadata>();
             foreach (DataRow row in dataTable.Rows)
             {
-                var entry = new ColumnMetadata(row["TABLE_CATALOG"] as string,
-                                               row["TABLE_SCHEMA"] as string,
+                var columnCatalog = row["TABLE_CATALOG"] as string;
+                var columnSchema = row["TABLE_SCHEMA"] as string;
+                if (columnCatalog == null) columnCatalog = "";
+                if (columnSchema  == null) columnSchema = "";
+
+                var entry = new ColumnMetadata(columnCatalog,
+                                               columnSchema,
                                                row["TABLE_NAME"] as string,
                                                row["COLUMN_NAME"] as string,
                                                row["DATA_TYPE"] as string);

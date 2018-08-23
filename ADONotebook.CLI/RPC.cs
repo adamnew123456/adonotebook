@@ -15,11 +15,21 @@ namespace ADONotebook
     /// </summary>
     public class ReaderMetadata
     {
-        [JsonProperty("columnnames")]
-        public List<string> ColumnNames;
+        [JsonProperty("column")]
+        public string Column;
 
-        [JsonProperty("columntypes")]
-        public List<string> ColumnTypes;
+        [JsonProperty("datatype")]
+        public string DataType;
+
+       public ReaderMetadata()
+       {
+       }
+
+       public ReaderMetadata(string column, string datatype)
+       {
+          Column = column;
+          DataType = datatype;
+       }
     }
 
     /// <summary>
@@ -206,10 +216,10 @@ namespace ADONotebook
         /// <summary>
         ///   Requests the server to provide the column listing of the current query.
         /// </summary>
-        public ReaderMetadata RetrieveQueryColumns()
+        public List<ReaderMetadata> RetrieveQueryColumns()
         {
             return RemoteCall("metadata")
-                .ToObject<ReaderMetadata>();
+                .ToObject<List<ReaderMetadata>>();
         }
 
         /// <summary>
@@ -217,7 +227,7 @@ namespace ADONotebook
         /// </summary>
         public List<Dictionary<string, string>> RetrievePage()
         {
-            return RemoteCall("page")
+            return RemoteCall("page", 100)
                 .ToObject<List<Dictionary<string, string>>>();
         }
 

@@ -14,24 +14,24 @@ namespace ADONotebook
         ///   Scans the data page to figure out how wide each column needs to
         ///   be to tabulate all the data.
         /// </summary>
-        private static int[] ComputePrintingWidth(ReaderMetadata columns, List<Dictionary<string, string>> page)
+        private static int[] ComputePrintingWidth(List<ReaderMetadata> columns, List<Dictionary<string, string>> page)
         {
-            var maxLengths = new int[columns.ColumnNames.Count];
-            for (var i = 0; i < columns.ColumnNames.Count; i++)
+            var maxLengths = new int[columns.Count];
+            for (var i = 0; i < columns.Count; i++)
             {
-                maxLengths[i] = Math.Max(maxLengths[i], columns.ColumnNames[i].Length);
+                maxLengths[i] = Math.Max(maxLengths[i], columns[i].Column.Length);
             }
 
-            for (var i = 0; i < columns.ColumnTypes.Count; i++)
+            for (var i = 0; i < columns.Count; i++)
             {
-                maxLengths[i] = Math.Max(maxLengths[i], columns.ColumnTypes[i].Length);
+                maxLengths[i] = Math.Max(maxLengths[i], columns[i].DataType.Length);
             }
 
             foreach (var row in page)
             {
-                for (var i = 0; i < columns.ColumnNames.Count; i++)
+                for (var i = 0; i < columns.Count; i++)
                 {
-                    var entry = row[columns.ColumnNames[i]] ?? "<null>";
+                    var entry = row[columns[i].Column] ?? "<null>";
                     maxLengths[i] = Math.Max(maxLengths[i], entry.Length);
                 }
             }
@@ -42,24 +42,24 @@ namespace ADONotebook
         /// <summary>
         ///    Pretty-prints, in tabular form, a single page of database results.
         /// </summary>
-        private static bool DisplayPage(ReaderMetadata columns, List<Dictionary<string, string>> page, bool promptForContinuation)
+        private static bool DisplayPage(List<ReaderMetadata> columns, List<Dictionary<string, string>> page, bool promptForContinuation)
         {
             var columnPadding = ComputePrintingWidth(columns, page);
-            for (var i = 0; i < columns.ColumnNames.Count; i++)
+            for (var i = 0; i < columns.Count; i++)
             {
-                Console.Write(columns.ColumnNames[i].PadRight(columnPadding[i]));
+                Console.Write(columns[i].Column.PadRight(columnPadding[i]));
                 Console.Write(" ");
             }
             Console.WriteLine();
 
-            for (var i = 0; i < columns.ColumnTypes.Count; i++)
+            for (var i = 0; i < columns.Count; i++)
             {
-                Console.Write(columns.ColumnTypes[i].PadRight(columnPadding[i]));
+                Console.Write(columns[i].DataType.PadRight(columnPadding[i]));
                 Console.Write(" ");
             }
             Console.WriteLine();
 
-            for (var i = 0; i < columns.ColumnTypes.Count; i++)
+            for (var i = 0; i < columns.Count; i++)
             {
                 Console.Write(new String('=', columnPadding[i]));
                 Console.Write(" ");
@@ -68,9 +68,9 @@ namespace ADONotebook
 
             foreach (var row in page)
             {
-                for (var i = 0; i < columns.ColumnNames.Count; i++)
+                for (var i = 0; i < columns.Count; i++)
                 {
-                    var column = columns.ColumnNames[i];
+                    var column = columns[i].Column;
                     var entry = row[column] ?? "<null>";
                     Console.Write(entry.PadRight(columnPadding[i]));
                     Console.Write(" ");
@@ -92,12 +92,12 @@ namespace ADONotebook
         /// <summary>
         ///   Converts a table metadata listing into a printable page.
         /// </summary>
-        private static Tuple<ReaderMetadata, List<Dictionary<string, string>>> TableListingToPage(List<TableMetadata> tables)
+        private static Tuple<List<ReaderMetadata>, List<Dictionary<string, string>>> TableListingToPage(List<TableMetadata> tables)
         {
-            var metadata = new ReaderMetadata
-            {
-                ColumnNames = new List<string> { "Catalog", "Schema", "Table" },
-                ColumnTypes = new List<string> { "System.String", "System.String", "System.String" }
+            var metadata = new List<ReaderMetadata> {
+               new ReaderMetadata("Catalog", "System.String"),
+               new ReaderMetadata("Schema", "System.String"),
+               new ReaderMetadata("Table", "System.String")
             };
 
             var rows = new List<Dictionary<string, string>>();
@@ -116,13 +116,16 @@ namespace ADONotebook
         /// <summary>
         ///   Converts a column metadata listing into a printable page.
         /// </summary>
-        private static Tuple<ReaderMetadata, List<Dictionary<string, string>>> ColumnListingToPage(List<ColumnMetadata> columns)
+        private static Tuple<List<ReaderMetadata>, List<Dictionary<string, string>>> ColumnListingToPage(List<ColumnMetadata> columns)
         {
-            var metadata = new ReaderMetadata
-            {
-                ColumnNames = new List<string> { "Catalog", "Schema", "Table", "Column", "DataType" },
-                ColumnTypes = new List<string> { "System.String", "System.String", "System.String", "System.String", "System.String" }
-            };
+
+           var metadata = new List<ReaderMetadata> {
+              new ReaderMetadata("Catalog", "System.String"),
+              new ReaderMetadata("Schema", "System.String"),
+              new ReaderMetadata("Table", "System.String"),
+              new ReaderMetadata("Column", "System.String"),
+              new ReaderMetadata("DataType", "System.String")
+           };
 
             var rows = new List<Dictionary<string, string>>();
             foreach (var column in columns)
@@ -280,9 +283,7 @@ namespace ADONotebook
                             var dottedName = Console.ReadLine();
                             var dottedParts = SqlLexer.ParseDottedName(dottedName);
 
-                            string catalog = null,
-                                schema = null,
-                                table = null;
+                            string catalog = "", schema = "", table = null;
 
                             switch (dottedParts.Count)
                             {
@@ -318,7 +319,7 @@ namespace ADONotebook
                                 rpc.ExecuteSql(sql);
 
                                 var resultColumns = rpc.RetrieveQueryColumns();
-                                if (resultColumns.ColumnNames.Count == 0)
+                                if (resultColumns.Count == 0)
                                 {
                                     Console.WriteLine("Records affected: {0}", rpc.RetrieveResultCount());
                                 }

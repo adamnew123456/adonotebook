@@ -86,9 +86,9 @@ over HTTP. The basic rules for the HTTP side are:
   its output Content-Type.
 - A server *must* accept `POST` requests on the path `/`. It *should* fail any
   request that doesn't have that method or path.
-- A server *may* return a non-200 status code for any error that occurs while 
-  executing a JSON-RPC request.
   
+Any error on the HTTP side *should* not return anything in its response body.
+
 On the JSON-RPC side, the only requirement is that the error response have this
 structure. The stacktrace can be set to an empty string if it would be too
 difficult/sensitive to return, but it's encouraged for debugging purposes.
@@ -103,6 +103,8 @@ difficult/sensitive to return, but it's encouraged for debugging purposes.
 }
 ```
 
+Any errors on the JSON-RPC side should still produce a status code of 200.
+
 ## Structures
 
 There are a few common structures which are returned by methods that are useful
@@ -112,8 +114,8 @@ these as their own classes:
 
 ```java
 class ReaderMetadata {
-    List<String> columnnames;
-    List<String> columntypes;
+    String column;
+    String datatype;
 }
 
 class TableMetadata {
@@ -135,40 +137,89 @@ Note that the JSON representation of `List` is an array, and the JSON
 representation of `Map` is as an object. These classes should also be rendered
 as objects, with their field names being the object attributes and their field
 values being the values of those attributes. For example, this is a
-ReaderMetadata structure rendered as JSON:
+list of ReaderMetadata structures rendered as JSON:
 
 ```json
-{
-    "columnnames": ["Metric", "Q1", "Q2", "Q3", "Q4", "Year"],
-    "columntypes": ["varchar", "int", "int", "int", "int", "int"]
-}
+[
+    {
+        "column": "Metric",
+        "datatype": "varchar"
+    },
+    {
+        "column": "YTD",
+        "datatype": "int"
+    }
+]
 ```
 
 ## Methods
 
 Some of the methods listed will have the annotation *Active* or *NoActive*.
-This means that the method either requires a currently active query in order to
+T>his means that the method either requires a currently active query in order to
 run, or that the method must not have an active query in order to run.
 
-- `List<TableMetadata> tables()` This returns all the tables currently visible 
-  within the database.
-- `List<TableMetadata> views()` This returns all the views currently visible 
-  within the database.
-- `List<ColumnMetadata> columns(String catalog, String schema, String table)` 
-  This returns all the columns on the given table or view.
-- `@NoActive boolean execute(String sql)` This executes the given query, and
-  stores the result set for future use, returning `true` (in case of any 
-  failures, the result should be a normal JSON-RPC error). This also puts the 
-  RPC into *Active* mode.
-- `@Active ReaderMetadata metadata()` This returns the column names and types
-  for the currently executing query. These lists must be empty if the
-  query was of a kind that doesn't produce columns (for example, an update).
-- `@Active int count()` Gets the affected record count for the query. This is
-  valid *only* if the query did not produce any columns (i.e. the metadata 
-  returned by `metadata()` is empty).
-- `@Active List<Map<String, String>> page()` This returns a single page (100
-  rows) of data. If there is no more data to return, it should return an empty
-  list instead.
-- `@Active boolean finish()` Closes the current query, taking the server into
-  *NoActive* mode.
-- `@NoActive void quit()` Terminates the server and stops accepting new requests.
+    List<TableMetadata> tables()
+    List<TableMetadata> views()
+    
+These functions return all tables and views currently visible within the 
+database.
+
+    List<ColumnMetadata> columns(String catalog, String schema, String table)
+    
+    
+This function returns columns which are part of one or more tables. A
+single table can be specified by providing non-blank catalog, schema
+and table names, while leaving any of them blank will return columns
+from any tables that match the patterns. For example:
+
+- `columns("", "", "")` will return columns from every table
+- `columns("prod", "product", "")` will return every column from every table in the `prod.product` schema
+- `columns("", "", "employee")` will return every column from every table named *employee*
+
+<!-- -->
+
+    @NoActive boolean execute(String sql) -> @Active
+    
+This executes the given query, and saves the result set so that it may
+be inspected using the `@Active` functions, and returns `true`.
+
+This should fail if the RPC is currently in `@Active` mode.
+
+    @Active List<ReaderMetadata> metadata()
+    
+This returns the columns available on the current result set. Note
+that this may be empty if the result set does not have any results
+(e.g. you previously executed an INSERT/UPDATE/DELETE) - in that
+case, use the `count()` function.
+    
+This should fail if the RPC is not currently in `@Active` mode.
+
+    @Active int count()
+
+Gets the affected record count for the query. This should be safe to call if
+the result set was generated from a SELECT query (the API should not return
+a fault), but the result of that call is not defined. 
+
+This should fail if the RPC is not currently in `@Active` mode.
+
+    @Active List<Map<String, String>> page(int max)
+    
+This returns up to `max` rows of data from the current result set, but may
+return fewer if there are fewer than `max` rows available.
+
+If the result set is exhausted and there are no more rows left, this
+should return an empty list. Otherwise, this should always return at
+least one row (or fail), even if the caller would have to wait for it.
+
+This should fail if the RPC is not currently in `@Active` mode, or if the 
+argument is not positive.
+
+    @Active boolean finish() -> @NoActive
+   
+Closes the current query, taking the server into `@NoActive` mode.
+
+This should fail if the RPC is not currently in `@Active` mode.
+
+    @NoActive void quit()
+    
+Terminates the server and stops accepting new requests.
