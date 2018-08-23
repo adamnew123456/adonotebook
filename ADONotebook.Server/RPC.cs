@@ -242,11 +242,6 @@ namespace ADONotebook
         private int count()
         {
             CheckPaginator();
-            if (Paginator.ResultCount == -1)
-            {
-                throw new InvalidOperationException("Cannot get result count from query that returns data");
-            }
-
             return Paginator.ResultCount;
         }
 
