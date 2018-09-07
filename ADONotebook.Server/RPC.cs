@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
-using System.IO;
 using System.Net;
 using System.Text;
 
@@ -68,8 +66,6 @@ namespace ADONotebook
 
             var listener = new HttpListener();
             listener.Prefixes.Add(Endpoint);
-
-            Console.WriteLine("Awaiting requests on {0}", Endpoint);
             listener.Start();
 
             try
@@ -87,6 +83,7 @@ namespace ADONotebook
                         context.Response.StatusDescription = "OK";
                         context.Response.ContentLength64 = 0;
                         context.Response.OutputStream.Close();
+                        Console.WriteLine("Processing CORS OPTIONS request");
                         continue;
                     }
 
@@ -95,6 +92,7 @@ namespace ADONotebook
                         context.Response.StatusCode = 405;
                         context.Response.StatusDescription = "Illegal Method";
                         context.Response.OutputStream.Close();
+                        Console.WriteLine("Invalid request method: {}", context.Request.HttpMethod);
                         continue;
                     }
 
@@ -103,6 +101,7 @@ namespace ADONotebook
                         context.Response.StatusCode = 404;
                         context.Response.StatusDescription = "Not Found";
                         context.Response.OutputStream.Close();
+                        Console.WriteLine("Invalid request path: {}", context.Request.Url.PathAndQuery);
                         continue;
                     }
 
@@ -111,6 +110,7 @@ namespace ADONotebook
                        context.Response.StatusCode = 400;
                        context.Response.StatusDescription = "Illegal Content Type";
                        context.Response.OutputStream.Close();
+                       Console.WriteLine("Invalid request Content-Type: {}", context.Request.ContentType);
                        continue;
                     }
 
@@ -124,14 +124,10 @@ namespace ADONotebook
                     }
 
                     var input = Encoding.UTF8.GetString(inputBuffer);
-                    Console.WriteLine("Processing request: ");
-                    Console.WriteLine(input);
 
                     JsonRpcProcessor
                         .Process(input)
                         .ContinueWith(result => {
-                                Console.WriteLine("Delivering result:");
-                                Console.WriteLine(result.Result);
                                 SetOutputContent(context.Response, result.Result);
                             })
                         .Wait();
@@ -139,6 +135,7 @@ namespace ADONotebook
             }
             catch (Exception)
             {
+                Console.WriteLine("Terminating web server");
                 listener.Stop();
                 executor.Close();
                 throw;
@@ -183,6 +180,7 @@ namespace ADONotebook
         [JsonRpcMethod]
         private List<TableMetadata> tables()
         {
+            Console.WriteLine("tables()");
             var results = Executor.Tables();
             return results;
         }
@@ -190,6 +188,7 @@ namespace ADONotebook
         [JsonRpcMethod]
         private List<TableMetadata> views()
         {
+            Console.WriteLine("views()");
             var results = Executor.Views();
             return results;
         }
@@ -197,6 +196,7 @@ namespace ADONotebook
         [JsonRpcMethod]
         private List<ColumnMetadata> columns(string catalog, string schema, string table)
         {
+            Console.WriteLine("columns({0}, {1}, {2})", catalog, schema, table);
             if (catalog == "") catalog = null;
             if (schema == "") schema = null;
             if (table == "") table = null;
@@ -207,8 +207,10 @@ namespace ADONotebook
         [JsonRpcMethod]
         private bool execute(string sql)
         {
+            Console.WriteLine("execute({0})", sql);
             if (Paginator != null)
             {
+                Console.WriteLine("- Called with active query");
                 throw new InvalidOperationException("Please finish your existing query before running another one");
             }
 
@@ -220,6 +222,7 @@ namespace ADONotebook
         {
             if (Paginator == null)
             {
+                Console.WriteLine("- Called without active query");
                 throw new InvalidOperationException("Cannot call this function without a current query");
             }
         }
@@ -227,6 +230,7 @@ namespace ADONotebook
         [JsonRpcMethod]
         private List<ReaderMetadata> metadata()
         {
+            Console.WriteLine("metadata()");
             CheckPaginator();
             var metadata = new List<ReaderMetadata>();
 
@@ -241,6 +245,7 @@ namespace ADONotebook
         [JsonRpcMethod]
         private int count()
         {
+            Console.WriteLine("count()");
             CheckPaginator();
             return Paginator.ResultCount;
         }
@@ -248,6 +253,7 @@ namespace ADONotebook
         [JsonRpcMethod]
         private List<Dictionary<string, string>> page(int size)
         {
+            Console.WriteLine("page({0})", size);
             CheckPaginator();
             if (size <= 0) {
                 throw new InvalidOperationException("Page size must be a positive integer");
@@ -282,6 +288,7 @@ namespace ADONotebook
         [JsonRpcMethod]
         private bool finish()
         {
+            Console.WriteLine("finish()");
             CheckPaginator();
             Paginator.Close();
             Paginator = null;
@@ -291,8 +298,10 @@ namespace ADONotebook
         [JsonRpcMethod]
         private bool quit()
         {
+            Console.WriteLine("quit()");
             if (Paginator != null)
             {
+                Console.WriteLine("- Called with active query");
                 throw new InvalidOperationException("Cannot quit before finishing current query");
             }
 
