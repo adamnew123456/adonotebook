@@ -370,6 +370,11 @@ namespace ADONotebook
                 {
                     Console.Error.WriteLine("Received error from server: {0}", error);
                 }
+                catch (Exception error)
+                {
+                   Console.Error.WriteLine("Received error in client: {0}", error.Message);
+                   break;
+                }
             }
         }
     }
