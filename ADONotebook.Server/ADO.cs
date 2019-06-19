@@ -62,7 +62,6 @@ namespace ADONotebook
 
         private IDataReader Reader;
         private DataTable CurrentPage;
-        private int PageSize = 100;
 
         public ADORequestPaginator(IDataReader reader)
         {
@@ -100,11 +99,11 @@ namespace ADONotebook
         /// <summary>
         ///   Returns a page of results from the data source, possibly empty.
         /// </summary>
-        public DataTable NextPage()
+        public DataTable NextPage(int size)
         {
             while (Reader.Read())
             {
-                if (CurrentPage.Rows.Count == PageSize)
+                if (CurrentPage.Rows.Count == size)
                 {
                     break;
                 }

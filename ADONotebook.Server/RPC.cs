@@ -260,7 +260,7 @@ namespace ADONotebook
             }
 
             var outputRows = new List<Dictionary<string, string>>();
-            var page = Paginator.NextPage();
+            var page = Paginator.NextPage(size);
 
             foreach (DataRow row in page.Rows)
             {
